@@ -93,6 +93,12 @@ parser SwitchIngressParser(packet_in        pkt,
         pkt.extract(hdr.ethernet);
         transition accept;
     }
+
+    // TODO:
+    // parse GTP headers
+    // F1 interface - port 2153
+    // N3 interface - prot 2152
+    // refer to PCAP
 }
 
 control SwitchIngress(
@@ -103,7 +109,32 @@ control SwitchIngress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md)
 {
+    // IPv4 Forward --------------------------------------------------------------------
+    action ipv4_forward_action(bit<9> port) {
+        ig_tm_md.ucast_egress_port = port;
+    }
+        
+    table ipv4_forward {
+        key = {
+            local_md.dst_addr : lpm;
+        }
+        actions = {
+            NoAction;
+            ipv4_forward_action;
+        }
+        default_action = NoAction;
+    }
+
+    // CU GTP Rewrite --------------------------------------------------------------------
+    // TODO
+
     apply {
+        // TODO: 
+        // 1. forward all SCTP packets to/fro CPU and DU
+        // 2. if received from F1, is table hit, then do CU GTP Rewrite; if miss, send to CPU
+        // 3. if received from N3, is table hit, then do F1 GTP Rewrite; if miss, send to CPU
+        // 4. if received from CPU, do IPv4 forward directly
+        ipv4_forward.apply();
     }
 }
 
@@ -113,6 +144,7 @@ control SwitchIngressDeparser(packet_out pkt,
     in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md)
 {
     apply {
+        // TODO: recompute UDP checksum
         pkt.emit(hdr);
     }
 }
