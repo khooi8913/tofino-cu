@@ -5,6 +5,15 @@
 #include <tna.p4>
 #endif
 
+typedef bit<16> ether_type_t;
+typedef bit<8> ip_protocol_t;
+
+const ether_type_t ETHERTYPE_IPV4 = 16w0x0800;
+const ip_protocol_t IP_PROTOCOLS_UDP = 0x11;
+const bit<16> UDP_DOWN = 0x0868; // from core-- 2152
+const bit<16> UDP_UP = 0x0869; // towards core-- 2153
+const bit<9> CPU_PORT = 0x68;
+
 header ethernet_h {
     bit<48>   dst_addr;
     bit<48>   src_addr;
@@ -46,7 +55,7 @@ header gtpu_h {
     bit<32>  teid;       /* tunnel endpoint id */
 }
 
-// Follows gtpu_t if any of ex_flag, seq_flag, or npdu_flag is 1.
+// Follows gtpu_h if any of ex_flag, seq_flag, or npdu_flag is 1.
 header gtpu_options_h {
     bit<16> seq_num;   /* Sequence number */
     bit<8>  n_pdu_num; /* N-PDU number */
@@ -75,6 +84,7 @@ struct switch_headers_t {
 }
 
 struct switch_metadata_t {
+
 }
 
 // ==================== INGRESS ====================
@@ -91,13 +101,60 @@ parser SwitchIngressParser(packet_in        pkt,
 
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
+        transition select(hdr.ethernet.ether_type) {
+            ETHERTYPE_IPV4 : parse_ipv4;
+        }
+    }
+
+    state parse_ipv4 {
+        pkt.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            IP_PROTOCOLS_UDP : parse_udp;
+            default: accept;
+        }
+    }
+
+    state parse_udp {
+        pkt.extract(hdr.udp);
+        transition select(hdr.udp.dst_port) {
+            UDP_UP : parse_gtp_1;   // towards core
+            UDP_DOWN : parse_gtp_2; // towards DU
+        }
+    }
+// currently have the same logic in both directions, can change here if required
+    state parse_gtp_1{
+        pkt.extract(hdr.gtpu);
+        pkt.extract(gtpu_options);
+
+        transition select(hdr.gtpu.ex_flag, hdr.gtpu.seq_flag, hdr.gtpu.npdu_flag){
+            1, _, _ :  parse_gtpu_ext;
+            0, 1, _ :  parse_gtpu_ext;
+            0, 0, 1 :  parse_gtpu_ext;
+            0, 0, 0 :  accept;
+        }
+    }
+
+    state parse_gtp_2{
+        pkt.extract(hdr.gtpu);
+        pkt.extract(gtpu_options);
+
+        transition select(hdr.gtpu.ex_flag, hdr.gtpu.seq_flag, hdr.gtpu.npdu_flag){
+            1, _, _ :  parse_gtpu_ext;
+            0, 1, _ :  parse_gtpu_ext;
+            0, 0, 1 :  parse_gtpu_ext;
+            0, 0, 0 :  accept;
+        }
+    }
+
+    state parse_gtpu_ext{
+        pkt.extract(hdr.gtpu_ext_psc);
         transition accept;
     }
 
     // TODO:
     // parse GTP headers
     // F1 interface - port 2153
-    // N3 interface - prot 2152
+    // N3 interface - port 2152
     // refer to PCAP
 }
 
@@ -111,17 +168,26 @@ control SwitchIngress(
 {
     // IPv4 Forward --------------------------------------------------------------------
     action ipv4_forward_action(bit<9> port) {
+        hdr.udp.dst_port
         ig_tm_md.ucast_egress_port = port;
     }
         
+// Src: 192.168.70.144(DU) or  Src: 192.168.70.134(Core)
     table ipv4_forward {
         key = {
-            local_md.dst_addr : lpm;
+            hdr.ipv4.dst_addr : exact;
+            hdr.udp.dst_port : exact;
         }
         actions = {
-            NoAction;
             ipv4_forward_action;
+            @defaultonly NoAction;
         }
+        const entries = {
+            ( 192.168.70.134, 2153) : ipv4_forward_action(, 2152);   // if I don't have the table mapping yet I need to send to CPU
+            ( 192.168.70.144, 2152) : ipv4_forward_action(, 2153);   // 
+            ( _, CPU_PORT)          : ipv4_forward_action;
+        }
+        
         default_action = NoAction;
     }
 
@@ -129,12 +195,73 @@ control SwitchIngress(
     // TODO
 
     apply {
+
+        if(!hdr.gtpu.isValid ){
+
+            if(hdr.ipv4.dst_addr == 192.168.70.144){
+                hdr.ipv4.dst_addr == 192.168.70.134;
+            }
+            if(hdr.ipv4.dst_addr == 192.168.70.134){
+                hdr.ipv4.dst_addr == 192.168.70.144;
+            }
+        }
+        else{
+
+            if(ig_intr_md.ingress_port != CPU_PORT){ 
+                
+                if(hdr.udp.dst_port== UDP_UP){ // from F1 
+                
+                    if(ipv4_forward_action.apply().hit){
+                        // CU GTP rewrite
+                        hdr.gtpu.version = 3w0b001;    /* version */
+                        hdr.gtpu.pt = 1;         /* protocol type */
+                        hdr.gtpu.spare = 0;      /* reserved */
+                        hdr.gtpu.ex_flag = 0;    /* next extension hdr present? */
+                        // EX FLAG SET TO 0
+                        hdr.gtpu.seq_flag = 0;   /* sequence no. */
+                        hdr.gtpu.npdu_flag = 0;  /* n-pdn number present ? */
+                        hdr.gtpu.msgtype = 0xff;    /* message type */
+                        // TODO FROM TABLE SEQ ID
+                        hdr.gtpu.msglen = 0x57;     /* message length */
+                        hdr.gtpu.teid=0x301e8f18;       /* tunnel endpoint id */ 
+
+                        hdr.gtpu_ext_psc.setInvalid();
+                    }
+                    else{
+                        ig_tm_md.ucast_egress_port = CPU_PORT;
+                    }
+                }
+                else{ // from N3 
+
+                    if(ipv4_forward_action.apply().hit){
+                        // F1 GTP rewrite
+                        hdr.gtpu.version = 3w0b001;    /* version */
+                        hdr.gtpu.pt = 1;         /* protocol type */
+                        hdr.gtpu.spare = 0;      /* reserved */
+                        hdr.gtpu.ex_flag = 1;    /* next extension hdr present? */
+                        hdr.gtpu.seq_flag = 0;   /* sequence no. */
+                        hdr.gtpu.npdu_flag = 0;  /* n-pdn number present ? */
+                        hdr.gtpu.msgtype = 0xff;    /* message type */
+                        // TODO FROM TABLE SEQ ID
+                        hdr.gtpu.msglen = 0x5c;     /* message length */
+                        hdr.gtpu.teid=0x01;       /* tunnel endpoint id */ 
+                    }
+                    else{
+                        ig_tm_md.ucast_egress_port = CPU_PORT;
+                    }
+                }
+
+            }
+            else{
+                ipv4_forward_action.apply();
+            }  
+        }
         // TODO: 
         // 1. forward all SCTP packets to/fro CPU and DU
         // 2. if received from F1, is table hit, then do CU GTP Rewrite; if miss, send to CPU
         // 3. if received from N3, is table hit, then do F1 GTP Rewrite; if miss, send to CPU
         // 4. if received from CPU, do IPv4 forward directly
-        ipv4_forward.apply();
+        // ipv4_forward.apply();
     }
 }
 
