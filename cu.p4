@@ -59,6 +59,9 @@ header gtpu_h {
 header gtpu_options_h {
     bit<16> seq_num;   /* Sequence number */
     bit<8>  n_pdu_num; /* N-PDU number */
+}
+
+header gtpu_next_ext_h {
     bit<8>  next_ext;  /* Next extension header */
 }
 
@@ -80,6 +83,7 @@ struct switch_headers_t {
     udp_h       udp;
     gtpu_h      gtpu;
     gtpu_options_h gtpu_options;
+    gtpu_next_ext_h gtpu_next_ex;
     gtpu_ext_psc_h gtpu_ext_psc;
 }
 
@@ -147,6 +151,7 @@ parser SwitchIngressParser(packet_in        pkt,
     }
 
     state parse_gtpu_ext{
+        pkt.extract(gtpu_next_ext_h);
         pkt.extract(hdr.gtpu_ext_psc);
         transition accept;
     }
@@ -167,11 +172,32 @@ control SwitchIngress(
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md)
 {
     // IPv4 Forward --------------------------------------------------------------------
+
     action ipv4_forward_action(bit<9> port) {
-        hdr.udp.dst_port
         ig_tm_md.ucast_egress_port = port;
     }
+
+    action tunnel_seq_action(bit<32> tunnel_id, bit<16> seq_no) {
+        hdr.gtpu.teid = tunnel_id;
+        hdr.gtpu_options.seq_num = seq_no; // TODO
+    
+    }
+    // can't maintain the entire rewrite as a table as one action can't apply a table
+    table tunnel_seq {
+        key = {
+            hdr.gtpu.teid : lpm;
+        }
+        actions = {
+            up_rewrite; down_rewrite; ipv4_forward_action;
+            @defaultonly NoAction;
+        }
+        const entries = {
+            0x301e8f18 : tunnel_seq_action(0x01, 0x0);
+        }
         
+        default_action = NoAction;
+
+    }
 // Src: 192.168.70.144(DU) or  Src: 192.168.70.134(Core)
     table ipv4_forward {
         key = {
@@ -179,17 +205,18 @@ control SwitchIngress(
             hdr.udp.dst_port : exact;
         }
         actions = {
-            ipv4_forward_action;
+            up_rewrite; down_rewrite; ipv4_forward_action;
             @defaultonly NoAction;
         }
         const entries = {
-            ( 192.168.70.134, 2153) : ipv4_forward_action(, 2152);   // if I don't have the table mapping yet I need to send to CPU
-            ( 192.168.70.144, 2152) : ipv4_forward_action(, 2153);   // 
-            ( _, CPU_PORT)          : ipv4_forward_action;
+            ( 192.168.70.134, 2153) : up_rewrite();   // if I don't have the table mapping yet I need to send to CPU
+            ( 192.168.70.144, 2152) : down_rewrite();   // 
+            ( _, CPU_PORT)          : ipv4_forward_action();
         }
         
         default_action = NoAction;
     }
+
 
     // CU GTP Rewrite --------------------------------------------------------------------
     // TODO
@@ -199,20 +226,46 @@ control SwitchIngress(
         if(!hdr.gtpu.isValid ){
 
             if(hdr.ipv4.dst_addr == 192.168.70.144){
-                hdr.ipv4.dst_addr == 192.168.70.134;
+                hdr.ipv4.dst_addr = 192.168.70.134;
             }
             if(hdr.ipv4.dst_addr == 192.168.70.134){
-                hdr.ipv4.dst_addr == 192.168.70.144;
+                hdr.ipv4.dst_addr = 192.168.70.144;
             }
         }
         else{
 
             if(ig_intr_md.ingress_port != CPU_PORT){ 
                 
-                if(hdr.udp.dst_port== UDP_UP){ // from F1 
+                if(hdr.udp.dst_port== UDP_UP){ // from F1 towards core
                 
                     if(ipv4_forward_action.apply().hit){
                         // CU GTP rewrite
+                        hdr.gtpu.version = 3w0b001;    /* version */
+                        hdr.gtpu.pt = 1;         /* protocol type */
+                        hdr.gtpu.spare = 0;      /* reserved */
+                        hdr.gtpu.ex_flag = 1;    /* next extension hdr present? */
+                        hdr.gtpu.seq_flag = 0;   /* sequence no. */
+                        hdr.gtpu.npdu_flag = 0;  /* n-pdn number present ? */
+                        hdr.gtpu.msgtype = 0xff;    /* message type */
+                        hdr.gtpu.msglen = 0x5c;     /* message length */
+                        // TODO FROM TABLE SEQ ID
+                        tunnel_seq.apply();
+                        // hdr.gtpu.teid=0x01;       /* tunnel endpoint id */ 
+                        hdr.gtpu_next_ex.next_ext = 0x85;
+
+                        hdr.udp.dst_port= UDP_UP;
+                        hdr.ipv4.src_addr = 192.168.70.144;
+                        hdr.ipv4.dst_addr = 192.168.70.134;
+
+                    }
+                    else{
+                        ig_tm_md.ucast_egress_port = CPU_PORT;
+                    }
+                }
+                else{ // from N3 
+
+                    if(ipv4_forward_action.apply().hit){
+                        // F1 GTP rewrite
                         hdr.gtpu.version = 3w0b001;    /* version */
                         hdr.gtpu.pt = 1;         /* protocol type */
                         hdr.gtpu.spare = 0;      /* reserved */
@@ -226,25 +279,6 @@ control SwitchIngress(
                         hdr.gtpu.teid=0x301e8f18;       /* tunnel endpoint id */ 
 
                         hdr.gtpu_ext_psc.setInvalid();
-                    }
-                    else{
-                        ig_tm_md.ucast_egress_port = CPU_PORT;
-                    }
-                }
-                else{ // from N3 
-
-                    if(ipv4_forward_action.apply().hit){
-                        // F1 GTP rewrite
-                        hdr.gtpu.version = 3w0b001;    /* version */
-                        hdr.gtpu.pt = 1;         /* protocol type */
-                        hdr.gtpu.spare = 0;      /* reserved */
-                        hdr.gtpu.ex_flag = 1;    /* next extension hdr present? */
-                        hdr.gtpu.seq_flag = 0;   /* sequence no. */
-                        hdr.gtpu.npdu_flag = 0;  /* n-pdn number present ? */
-                        hdr.gtpu.msgtype = 0xff;    /* message type */
-                        // TODO FROM TABLE SEQ ID
-                        hdr.gtpu.msglen = 0x5c;     /* message length */
-                        hdr.gtpu.teid=0x01;       /* tunnel endpoint id */ 
                     }
                     else{
                         ig_tm_md.ucast_egress_port = CPU_PORT;
