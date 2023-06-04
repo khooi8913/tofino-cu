@@ -193,6 +193,7 @@ control SwitchIngress(
         }
         const entries = {
             0x301e8f18 : tunnel_seq_action(0x01, 0x0);
+            0x01 : tunnel_seq_action(0x301e8f18, 0x0);
         }
         
         default_action = NoAction;
@@ -251,8 +252,18 @@ control SwitchIngress(
                         // TODO FROM TABLE SEQ ID
                         tunnel_seq.apply();
                         // hdr.gtpu.teid=0x01;       /* tunnel endpoint id */ 
-                        hdr.gtpu_next_ex.next_ext = 0x85;
 
+                        // The Extenstion Unit headers
+                        hdr.gtpu_next_ex.next_ext = 0x85;
+                        hdr.gtpu_ext_psc.len = 0x01 ;      /* Length in 4-octet units (common to all extensions) */
+                        bit<4> type = 0x1;     /* Uplink or downlink */
+                        bit<4> spare0 = 0x0;   /* Reserved */
+                        bit<1> ppp = 0;      /* Paging Policy Presence (UL only, not supported) */
+                        bit<1> rqi = 0;      /* Reflective QoS Indicator (UL only) */
+                        bit<6>  qfi = 0x6;      /* QoS Flow Identifier */
+                        bit<8> next_ext = 0x00;
+
+                        hdr.udp.src_port= UDP_UP;
                         hdr.udp.dst_port= UDP_UP;
                         hdr.ipv4.src_addr = 192.168.70.144;
                         hdr.ipv4.dst_addr = 192.168.70.134;
@@ -275,10 +286,17 @@ control SwitchIngress(
                         hdr.gtpu.npdu_flag = 0;  /* n-pdn number present ? */
                         hdr.gtpu.msgtype = 0xff;    /* message type */
                         // TODO FROM TABLE SEQ ID
+                        tunnel_seq.apply();
                         hdr.gtpu.msglen = 0x57;     /* message length */
                         hdr.gtpu.teid=0x301e8f18;       /* tunnel endpoint id */ 
 
                         hdr.gtpu_ext_psc.setInvalid();
+
+                        hdr.udp.src_port= UDP_DOWN;
+                        hdr.udp.dst_port= UDP_DOWN;
+                        hdr.ipv4.src_addr = 192.168.70.134;
+                        hdr.ipv4.dst_addr = 192.168.70.144;
+
                     }
                     else{
                         ig_tm_md.ucast_egress_port = CPU_PORT;
