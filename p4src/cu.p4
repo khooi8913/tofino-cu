@@ -328,7 +328,10 @@ control SwitchIngress(
 
 
     apply {
-        if(hdr.ipv4.isValid()) {            
+        if(hdr.ipv4.isValid()) { 
+            
+            ipv4_forward.apply();  
+
             if(ig_intr_md.ingress_port != CPU_PORT){ 
                 if(hdr.gtpu.isValid()) {
                     get_origin.apply();
@@ -346,8 +349,6 @@ control SwitchIngress(
                 // GTP or SCTP
                 // from CPU port
             }
-
-            ipv4_forward.apply();
         }
     }
 }

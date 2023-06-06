@@ -99,6 +99,16 @@ class P4ProgramTest(BfRuntimeTest):
             pass
         
         # Get tables ready
+        self.forward = self.bfrt_info.table_get("SwitchIngress.ipv4_forward")
+        self.forward.info.key_field_annotation_add(
+            "hdr.ipv4.dst_addr", "ipv4")
+           
+        self.uplink =  self.bfrt_info.table_get("SwitchIngress.fastpath_f1_to_n3")
+        # self.downlink =  self.bfrt_info.table_get("Ingress.fastpath_n3_to_f1")
+
+        self.tables = [self.forward, self.uplink 
+                       #, self.downlink
+                       ]
         
         # Optional, but highly recommended
         self.cleanUp()
@@ -121,15 +131,70 @@ class P4ProgramTest(BfRuntimeTest):
         print("Table Cleanup:")
         print("==============")
 
-# The main test
+        try:
+            for t in self.tables:
+                print("  Clearing Table {}".format(t.info.name_get()))
+                keys = []
+                for (d, k) in t.entry_get(self.dev_tgt, [], {"from_hw": False}):
+                    if k is not None:
+                        keys.append(k)
+                t.entry_del(self.dev_tgt, keys)
+                # Not all tables support default entry
+                try:
+                    t.default_entry_reset(self.dev_tgt)
+                except:
+                    pass
+        except Exception as e:
+            print("Error cleaning up: {}".format(e))
+
+#-------Table Programming----------
+# Each entry is a tuple, consisting of 3 elements:
+#  key         -- a list of tuples for each element of the key
+#  action_name -- the action to use. Must use full name of the action
+#  data        -- a list (may be empty) of the tuples for each action
+#                 parameter
+def programTable(table, entries, target, verbose=False):
+        key_list=[]
+        data_list=[]
+        for k, a, d in entries:
+            key_list.append(table.make_key([gc.KeyTuple(*f)   for f in k]))
+            data_list.append(table.make_data([gc.DataTuple(*p) for p in d], a))
+            if verbose:
+                print("    Adding an entry to table {}: {} --> {}({})".format(
+                    table.info.name_get(), k, a, d
+                ))
+        table.entry_add(target, key_list, data_list)
+        if verbose:
+            print("  Table programming completed for {}".format(table.info.name_get()))
+
+
+#-------The main test----------
 class CU(P4ProgramTest):
     def runTest(self):
         pcap_flow = rdpcap("../sample/study.pcap")
 
         # TODO change the ports
-        ingress_port = self.swports[test_param_get("ingress_port",  0)] 
-        egress_port  = self.swports[test_param_get("egress_port",   1)]
-        cpu_port = 6
+        ingress_port = 8
+        egress_port  = 9
+        cpu_port = 5
+        
+        print("\n")
+        print("Adding table rules")
+        print("========")
+        
+        programTable(self.forward, [
+                    ([("hdr.ipv4.dst_addr", 0xc0a84690)],
+                    "SwitchIngress.ipv4_forward_action", [("port", egress_port)]),
+                    # ([("hdr.ipv4.dst_addr", 0xc0a84686)],
+                    # "SwitchIngress.ipv4_forward_action", [("port", egress_port)])
+                    ]        
+                     , self.dev_tgt)
+
+        programTable(self.uplink, [
+                    ([("hdr.gtpu.teid", 0x301e8f18)],
+                    "SwitchIngress.rewrite_f1_to_n3", [("teid", 0x01), 
+                    ("qfi", 0x06)])]         
+                     , self.dev_tgt)
         
         print("\n")
         print("Testing for DU to CU")
@@ -144,6 +209,24 @@ class CU(P4ProgramTest):
       
         print("Expected packet is: \n")
         hexdump(expt_pkt)
+                # print("\n")
+        # print("Adding table rules")
+        # print("========")
+        
+        # programTable(self.forward, [
+        #             ([("hdr.ipv4.dst_addr", "192.168.70.144")],
+        #             "Ingress.ipv4_forward_action", [("port", egress_port)])]         
+        #              , self.dev_tgt)
+
+        # programTable(self.uplink, [
+        #             ([("hdr.gtpu.teid", "0x301e8f18")],
+        #             "Ingress.rewrite_f1_to_n3", [("teid", "0x01")], 
+        #             [("qfi", "0x06")])]         
+        #              , self.dev_tgt)
+        
+        # print("\n")
+        # print("Testing for DU to CU")
+        # print("========")
         
         expt_pkt = Mask(expt_pkt)
         
