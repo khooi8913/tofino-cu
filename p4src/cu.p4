@@ -14,8 +14,8 @@ const ip_protocol_t IP_PROTOCOLS_UDP = 0x11;
 const bit<16> UDP_PORT_N3 = 0x0868; // from core-- 2152
 const bit<16> UDP_PORT_F1 = 0x0869; // towards core-- 2153
 
-const bit<32> IP_ADDR_DU = 0xc0a84690;      // 192.168.70.144
-const bit<32> IP_ADDR_CU = 0xc0a84691;      // 192.168.70.145
+const bit<32> IP_ADDR_CU = 0xc0a84690;      // 192.168.70.144
+const bit<32> IP_ADDR_DU = 0xc0a84691;      // 192.168.70.145
 const bit<32> IP_ADDR_UPF = 0xc0a84686;     // 192.168.70.134
 
 #if __TARGET_TOFINO__ == 2
