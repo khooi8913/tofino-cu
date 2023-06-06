@@ -149,6 +149,7 @@ control MyIngress(
             0xc0a84691 : forward(136);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
             0xc0a84686 : forward(152);     // UPF - 192.168.70.134 mare[ens1f1np1], 3/0
             0xc0a84684 : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+            0xc0a84681 : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
         }
         size = 64;
     }
