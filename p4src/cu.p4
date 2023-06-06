@@ -179,6 +179,16 @@ control SwitchIngress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md)
 {
+    // First val in <,> is size and second is index
+    Register<bit<8>,bit<8>>(10,0x0) npdu_reg;
+    
+    // Keep the npdu count based on the (16-bit) index of the register
+    RegisterAction<bit<8>, bit<8>, bit<8>>(npdu_reg) fetch_npdu = {
+        void apply(inout bit<8> np, out bit<8> rv) {
+            np = np + 1;
+            rv = np; 
+        }
+    };
 
     action drop() {
         ig_dprsr_md.drop_ctl = 0x01;
@@ -276,7 +286,7 @@ control SwitchIngress(
     }
 
     // N3 to F1 --------------------------------------------------------------------
-    action rewrite_n3_to_f1(bit<32> teid, bit<16> seq_num, bit<8> npdu_num) {
+    action rewrite_n3_to_f1(bit<32> teid, bit<16> seq_num, bit<8> index) {
         hdr.gtpu.version = 3w0b001;     /* version */
         hdr.gtpu.pt = 1;                /* protocol type */
         hdr.gtpu.spare = 0;             /* reserved */
@@ -292,7 +302,7 @@ control SwitchIngress(
         hdr.gtpu.teid=teid;             /* tunnel endpoint id */ 
 
         hdr.gtpu_options.seq_num = seq_num;
-        hdr.gtpu_options.n_pdu_num = npdu_num;
+        hdr.gtpu_options.n_pdu_num = fetch_npdu.execute(index);
 
         hdr.udp.src_port= UDP_PORT_F1;
         hdr.udp.dst_port= UDP_PORT_F1;
@@ -315,17 +325,9 @@ control SwitchIngress(
         default_action = NoAction;
     }
 
-    apply {
 
-        // First val in <,> is size and second is index
-        Register<bit<32>,bit<8>>(1,0x0) npdu_reg;
-        
-        // for keeping the packet loss count
-        RegisterAction<bit<32>, bit<8>, bit<32>>(npdu_reg) fetch_npdu = {
-            void apply(inout bit<8> np) {
-                np = np + 1;
-            }
-        };
+
+    apply {
         if(hdr.ipv4.isValid()) {            
             if(ig_intr_md.ingress_port != CPU_PORT){ 
                 if(hdr.gtpu.isValid()) {
