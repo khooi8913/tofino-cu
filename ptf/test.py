@@ -124,7 +124,8 @@ class P4ProgramTest(BfRuntimeTest):
 # The main test
 class CU(P4ProgramTest):
     def runTest(self):
-        
+        pcap_flow = rdpcap("../sample/study.pcap")
+
         # TODO change the ports
         ingress_port = self.swports[test_param_get("ingress_port",  0)] 
         egress_port  = self.swports[test_param_get("egress_port",   1)]
@@ -134,29 +135,13 @@ class CU(P4ProgramTest):
         print("Testing for DU to CU")
         print("========")
         
-        # TODO Change the ETHER src and dst
         # pkt = simple_udp_packet()
-        send_pkt =  Ether(dst='02:42:C0:A8:46:90',
-                         src='02:42:C0:A8:46:91')/ \
-                    IP(src='192.168.70.145',
-                      dst='192.168.70.144', ttl=64, ihl = 5)/ \
-                    UDP(sport=2153, dport=2153, len =103)/ \
-                    (0x30ff0057301e8f18816301450000549d404000400189360c010102c0a846870800f616000c000133fb626400000000a3a9090000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637)
-                    
-        # can compute the checksum using scapy
-        # packet = IP(raw(packet))  # Build packet (automatically done when sending)
-        # checksum_scapy = packet[UDP].chksum
-                    
+        send_pkt = pcap_flow[0]
+    
+        send_packet(self,ingress_port,send_pkt)
 
-        send_packet(self,ingress_port,pkt)
-
-        expt_pkt = Ether(dst='02:42:C0:A8:46:86',
-                         src='02:42:C0:A8:46:90')/ \
-                    IP(src='192.168.70.144',
-                      dst='192.168.70.134', ttl=64, ihl = 5)/ \
-                    UDP(sport=2152, dport=2152, len =108)/ \
-                    (0x34ff005c000000010000008501100600_450000549d404000400189360c010102c0a84687_0800f616000c000133fb626400000000a3a9090000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637)    
-        
+        expt_pkt = pcap_flow[1]
+      
         print("Expected packet is: \n")
         hexdump(expt_pkt)
         
@@ -168,5 +153,23 @@ class CU(P4ProgramTest):
         verify_packet(self, expt_pkt, egress_port)
         print("\nVerified Packet received on port %d" % egress_port)
 
-
-        ############# That's it! ##############
+        # Hard coded backup packets
+        # send_pkt =  Ether(dst='02:42:C0:A8:46:90',
+            #                  src='02:42:C0:A8:46:91')/ \
+            #             IP(src='192.168.70.145',
+            #               dst='192.168.70.144', ttl=64, ihl = 5)/ \
+            #             UDP(sport=2153, dport=2153, len =103)/ \
+            #             (0x30ff0057301e8f18816301450000549d404000400189360c010102c0a846870800f616000c000133fb626400000000a3a9090000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637)
+                        
+            # can compute the checksum using scapy
+            # packet = IP(raw(packet))  # Build packet (automatically done when sending)
+            # checksum_scapy = packet[UDP].chksum
+        
+        # expt_pkt = Ether(dst='02:42:C0:A8:46:86',
+            #                  src='02:42:C0:A8:46:90')/ \
+            #             IP(src='192.168.70.144',
+            #               dst='192.168.70.134', ttl=64, ihl = 5)/ \
+            #             UDP(sport=2152, dport=2152, len =108)/ \
+            #             (0x34ff005c000000010000008501100600_450000549d404000400189360c010102c0a84687_0800f616000c000133fb626400000000a3a9090000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637)    
+            
+                        

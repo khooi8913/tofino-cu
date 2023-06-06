@@ -19,7 +19,7 @@ const bit<32> IP_ADDR_DU = 0xc0a84691;      // 192.168.70.145
 const bit<32> IP_ADDR_UPF = 0xc0a84686;     // 192.168.70.134
 
 #if __TARGET_TOFINO__ == 2
-const bit<9> CPU_PORT = 0x68;
+const bit<9> CPU_PORT = 0x05;
 #else
 const bit<9> CPU_PORT = 0x00;
 #endif
@@ -221,7 +221,7 @@ control SwitchIngress(
         }
         default_action = drop();
         const entries = {
-            IP_ADDR_DU  : set_origin_f1();   // 192.168.70.144
+            IP_ADDR_DU  : set_origin_f1();   // 192.168.70.145
             IP_ADDR_UPF : set_origin_n3();   // 192.168.70.134
         }
         size = 128;
@@ -316,9 +316,17 @@ control SwitchIngress(
     }
 
     apply {
-        if(hdr.ipv4.isValid()) {
-            ipv4_forward.apply();
-            
+
+        // First val in <,> is size and second is index
+        Register<bit<32>,bit<8>>(1,0x0) npdu_reg;
+        
+        // for keeping the packet loss count
+        RegisterAction<bit<32>, bit<8>, bit<32>>(npdu_reg) fetch_npdu = {
+            void apply(inout bit<8> np) {
+                np = np + 1;
+            }
+        };
+        if(hdr.ipv4.isValid()) {            
             if(ig_intr_md.ingress_port != CPU_PORT){ 
                 if(hdr.gtpu.isValid()) {
                     get_origin.apply();
@@ -336,6 +344,8 @@ control SwitchIngress(
                 // GTP or SCTP
                 // from CPU port
             }
+
+            ipv4_forward.apply();
         }
     }
 }

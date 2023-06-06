@@ -1,8 +1,43 @@
 import sys
 import ipaddress
+import bfruntime_pb2
 
 from scapy.all import *
- 
+
+sde_install = os.environ['SDE_INSTALL']
+sys.path.append('%s/lib/python2.7/site-packages/tofino'%(sde_install))
+sys.path.append('%s/lib/python2.7/site-packages/p4testutils'%(sde_install))
+sys.path.append('%s/lib/python2.7/site-packages'%(sde_install))
+
+# Assumes valid PYTHONPATH
+import bfrt_grpc.client as gc
+
+# Connect to the BF Runtime server
+for bfrt_client_id in range(10):
+    try:
+        interface = gc.ClientInterface(
+            grpc_addr="localhost:50052",
+            client_id=bfrt_client_id,
+            device_id=0,
+            num_tries=1,
+        )
+        print("Connected to BF Runtime Server as client", bfrt_client_id)
+        break
+    except:
+        print("Could not connect to BF Runtime Server")
+        quit
+
+# Get information about the running program
+bfrt_info = interface.bfrt_info_get()
+print("The target is running the P4 program: {}".format(bfrt_info.p4_name_get()))
+
+# Establish that you are the "main" client
+if bfrt_client_id == 0:
+    interface.bind_pipeline_config(bfrt_info.p4_name_get())
+
+# Get the target device, currently setup for all pipes
+target = gc.Target(device_id=0, pipe_id=0xffff)
+
 # ==============================
 # CONSTANTS
 # ==============================
@@ -130,6 +165,13 @@ def learn_cu_to_du(pkt):
     # hexdump(gtp_payload)
     gtp_fields = parse_gtp(gtp_headers)
     
+    # Initialize the register
+    npdu_reg = bfrt_info.table_get("pipe.Ingress.npdu_reg")
+    npdu_keys = [npdu_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', 0)])]
+    npdu_data = [npdu_reg.make_data([gc.DataTuple('Ingress.npdu_reg.f1',gtp_fields[2])])]
+
+    npdu_reg.entry_mod(target, npdu_keys, npdu_data)
+
     ip_pkt = IP(bytes(gtp_payload))
     if ip_pkt.getlayer("IP").version == 4:
         ip_pair = ip_pkt.getlayer("IP").src, ip_pkt.getlayer("IP").dst
@@ -148,18 +190,43 @@ def push_to_data_plane(ul_key, dl_key):
         print(n3_ul_teid, n3_ul_seq_num, n3_ul_npdu, n3_ul_ext_hdr, n3_ul_qfi)
 
         print("UPLINK TEID (F1 to N3) MAPPING", f1_ul_teid, "TO", n3_ul_teid, "with QFI", n3_ul_qfi)
-        # TODO: integrate with P4Runtime here.
-        # TODO: Archit, implement this.
 
-        # downlink direction    
+        # Calling the bfrt tables
+        fast_f1_to_n3 = bfrt_info.table_get('pipe.Ingress.fastpath_f1_to_n3')
+        fast_f1_to_n3_key = [fast_f1_to_n3.make_key([gc.KeyTuple("hdr.gtpu.teid", f1_ul_teid)])]
+        fast_f1_to_n3_data = [fast_f1_to_n3.make_data([gc.DataTuple("teid", n3_ul_teid), 
+                                                       gc.DataTuple("qfi", n3_ul_qfi)],'Ingress.rewrite_f1_to_n3')]
+        
+        fast_f1_to_n3.entry_add(target, fast_f1_to_n3_key, fast_f1_to_n3_data)
+ 
+        # p4.Ingress.ipv4_forward.entry_with_send(dst_addr=ipaddress.ip_address("192.168.70.132"), port=152).push()
+        
+        
+        # -----Downlink direction    
         n3_dl_teid, n3_dl_seq_num, n3_dl_npdu, n3_dl_ext_hdr, n3_dl_qfi = cn_to_cu[dl_key]
         f1_dl_teid, f1_dl_seq_num, f1_dl_npdu = cu_to_du[dl_key]
         print(n3_dl_teid, n3_dl_seq_num, n3_dl_npdu, n3_dl_ext_hdr, n3_dl_qfi)
         print(f1_dl_teid, f1_dl_seq_num, f1_dl_npdu)
 
         print("DOWNLINK TEID (N3 to F1) MAPPING", n3_dl_teid, "TO", f1_dl_teid, "with SeqNumber", f1_dl_seq_num, "and NPDU", f1_dl_npdu)
-        # TODO: integrate with P4Runtime here.
-        # TODO: Archit, implement this.
+
+        # ---- Fetch NPDU value first
+        npdu_reg = bfrt_info.table_get("pipe.Ingress.npdu_reg")
+        key = [npdu_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', 0)])]
+
+        for data, key in npdu_reg.entry_get(target, key, {"from_hw": True}):
+            out = data.to_dict()["Ingress.npdu_reg.f1"]
+
+        f1_dl_npdu = out[0]
+
+        fast_n3_to_f1 = bfrt_info.table_get('pipe.Ingress.fastpath_n3_to_f1')
+        fast_n3_to_f1_key = [fast_n3_to_f1.make_key([gc.KeyTuple("hdr.gtpu.teid", n3_dl_teid)])]
+        fast_n3_to_f1_data = [fast_n3_to_f1.make_data([gc.DataTuple("teid", f1_dl_teid), 
+                                                       gc.DataTuple("seq_num", f1_dl_seq_num),
+                                                       gc.KeyTuple("npdu_num", f1_dl_npdu)]), 'rewrite_n3_to_f1']
+        
+        fast_f1_to_n3.entry_add(target, fast_n3_to_f1_key, fast_n3_to_f1_data)
+ 
 
         print("offloaded!")
         is_pushed[index] = True
