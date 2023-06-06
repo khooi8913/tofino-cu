@@ -1,2 +1,2 @@
 #! /bin/bash
-$SDE/run_bfshell.sh -b ./bootstrap/arp_setup
+$SDE/run_bfshell.sh -b `pwd`/arp_setup
