@@ -126,6 +126,10 @@ struct switch_metadata_t {
     bit<1>      is_n3;
     bit<1>      from_du;
     bit<1>      from_cn;      
+
+    // bool        is_ext;
+    bit<16>     udp_csum_tmp;
+    // bit<16>     udp_csum_tmp_ext;
 }
 
 // ==================== INGRESS ====================
@@ -134,6 +138,9 @@ parser SwitchIngressParser(packet_in        pkt,
     out switch_metadata_t         meta,
     out ingress_intrinsic_metadata_t  ig_intr_md)
 {
+
+    Checksum() udp_checksum;
+
      state start {
         pkt.extract(ig_intr_md);
         pkt.advance(PORT_METADATA_SIZE);
@@ -150,6 +157,9 @@ parser SwitchIngressParser(packet_in        pkt,
 
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
+
+        udp_checksum.subtract({hdr.ipv4.src_addr, hdr.ipv4.dst_addr, 8w0, hdr.ipv4.protocol});
+
         transition select(hdr.ipv4.protocol) {
             IP_PROTOCOLS_UDP : parse_udp;
             default: accept;
@@ -163,40 +173,81 @@ parser SwitchIngressParser(packet_in        pkt,
 
     state parse_udp {
         pkt.extract(hdr.udp);
+    
+        udp_checksum.subtract({hdr.udp.length, hdr.udp.src_port, hdr.udp.dst_port, hdr.udp.length, hdr.udp.checksum});
+
         transition select(hdr.udp.dst_port) {
-            UDP_PORT_N3 : parse_gtp_n3;     // towards core
-            UDP_PORT_F1 : parse_gtp_f1;     // towards DU
+            UDP_PORT_N3 : parse_gtp;     // towards core
+            UDP_PORT_F1 : parse_gtp;
+            // UDP_PORT_N3 : parse_gtp_n3;     // towards core
+            // UDP_PORT_F1 : parse_gtp_f1;     // towards DU
         }
     }
 
     // currently have the same logic in both directions, can change here if required
-    state parse_gtp_n3{
+    state parse_gtp {
         pkt.extract(hdr.gtpu);
         pkt.extract(hdr.gtpu_options);
+
+        udp_checksum.subtract({
+            // hdr.gtpu.teid,
+            // hdr.gtpu.ex_flag, 
+            // hdr.gtpu.msglen,
+            // hdr.gtpu_options.seq_num,
+            // hdr.gtpu_options.n_pdu_num
+            hdr.gtpu,
+            hdr.gtpu_options
+            });
+        // meta.udp_csum_tmp = udp_checksum.get();
 
         transition select(hdr.gtpu.ex_flag, hdr.gtpu.seq_flag, hdr.gtpu.npdu_flag){
             (1, _, _)   :  parse_gtpu_ext;
             (0, 1, _)   :  parse_gtpu_ext;
             (0, 0, 1)   :  parse_gtpu_ext;
-            default     :  accept;
+            default     :  parse_nothing;
         }
     }
 
-    state parse_gtp_f1{
-        pkt.extract(hdr.gtpu);
-        pkt.extract(hdr.gtpu_options);
-
-        transition select(hdr.gtpu.ex_flag, hdr.gtpu.seq_flag, hdr.gtpu.npdu_flag){
-            (1, _, _)   :  parse_gtpu_ext;
-            (0, 1, _)   :  parse_gtpu_ext;
-            (0, 0, 1)   :  parse_gtpu_ext;
-            default     :  accept;
-        }
+    state parse_nothing {
+        meta.udp_csum_tmp = udp_checksum.get();
+        transition accept;
     }
+
+    // state parse_gtp_f1{
+    //     pkt.extract(hdr.gtpu);
+    //     pkt.extract(hdr.gtpu_options);
+
+    //     udp_checksum.subtract({
+    //         hdr.gtpu.teid,
+    //         hdr.gtpu.ex_flag, 
+    //         hdr.gtpu.msglen,
+    //         hdr.gtpu_options.seq_num,
+    //         hdr.gtpu_options.n_pdu_num
+    //         });
+    //     meta.udp_csum_tmp = hdr.udp.checksum;
+
+    //     transition select(hdr.gtpu.ex_flag, hdr.gtpu.seq_flag, hdr.gtpu.npdu_flag){
+    //         (1, _, _)   :  parse_gtpu_ext;
+    //         (0, 1, _)   :  parse_gtpu_ext;
+    //         (0, 0, 1)   :  parse_gtpu_ext;
+    //         default     :  accept;
+    //     }
+    // }
 
     state parse_gtpu_ext{
         pkt.extract(hdr.gtpu_next_ex);
         pkt.extract(hdr.gtpu_ext_psc);
+
+        udp_checksum.subtract({
+            // hdr.gtpu_next_ex.next_ext,
+            // hdr.gtpu_ext_psc.qfi,
+            // hdr.gtpu_ext_psc.len,
+            // hdr.gtpu_ext_psc.type
+            hdr.gtpu_next_ex,
+            hdr.gtpu_ext_psc
+            });
+        meta.udp_csum_tmp = udp_checksum.get();
+
         transition accept;
     }
 }
@@ -308,7 +359,7 @@ control SwitchIngress(
 
         // for checksum validation
         // hdr.ipv4.identification = 0xcbbd;
-        hdr.udp.checksum = 0;
+        // hdr.udp.checksum = 0;
 
         // adjust packet length
         hdr.ipv4.total_len = hdr.ipv4.total_len + 5; 
@@ -350,7 +401,7 @@ control SwitchIngress(
         hdr.ipv4.src_addr = IP_ADDR_CU;
         hdr.ipv4.dst_addr = IP_ADDR_DU;
 
-        hdr.udp.checksum = 0;
+        // hdr.udp.checksum = 0;
 
         // adjust packet length
         hdr.ipv4.total_len = hdr.ipv4.total_len - 5; 
@@ -406,7 +457,7 @@ control SwitchIngressDeparser(packet_out pkt,
     in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md)
 {
     Checksum() ipv4_checksum;
-    // Checksum() udp_checksum;
+    Checksum() udp_checksum;
 
     apply {
         hdr.ipv4.hdr_checksum = ipv4_checksum.update({
@@ -423,11 +474,59 @@ control SwitchIngressDeparser(packet_out pkt,
             hdr.ipv4.dst_addr
         });
 
-        // hdr.udp.checksum = udp_checksum.update({
-        //     hdr.udp.src_port,
-        //     hdr.udp.dst_port,
-        //     hdr.udp.length
-        // });
+        if(hdr.gtpu_next_ex.isValid()) {
+            hdr.udp.checksum = udp_checksum.update(data={
+                hdr.ipv4.src_addr,
+                hdr.ipv4.dst_addr,
+                8w0, 
+                hdr.ipv4.protocol,
+                // hdr.ipv4.total_len,
+                hdr.udp.length,
+                hdr.udp.src_port,
+                hdr.udp.dst_port,
+                hdr.udp.length,
+                hdr.gtpu,
+                hdr.gtpu_options,
+                hdr.gtpu_next_ex,
+                hdr.gtpu_ext_psc,
+                // hdr.gtpu.teid,
+                // hdr.gtpu.ex_flag, 
+                // hdr.gtpu.msglen,
+                // hdr.gtpu_options.seq_num,
+                // hdr.gtpu_options.n_pdu_num,
+                // hdr.gtpu_next_ex.next_ext,
+                // hdr.gtpu_ext_psc.qfi,
+                // hdr.gtpu_ext_psc.len,
+                // hdr.gtpu_ext_psc.type,
+                meta.udp_csum_tmp
+            });
+        } else if(hdr.gtpu.isValid() && !hdr.gtpu_next_ex.isValid()) {
+            hdr.udp.checksum = udp_checksum.update(data={
+                hdr.ipv4.src_addr,
+                hdr.ipv4.dst_addr,
+                8w0, 
+                hdr.udp.length,
+                hdr.ipv4.protocol,
+                hdr.udp.src_port,
+                hdr.udp.dst_port,
+                hdr.udp.length,
+                hdr.gtpu,
+                hdr.gtpu_options,
+                // hdr.gtpu_next_ex,
+                // hdr.gtpu_ext_psc,
+                // hdr.gtpu.teid,
+                // hdr.gtpu.ex_flag, 
+                // hdr.gtpu.msglen,
+                // hdr.gtpu_options.seq_num,
+                // hdr.gtpu_options.n_pdu_num,
+                // hdr.gtpu_next_ex.next_ext,
+                // hdr.gtpu_ext_psc.qfi,
+                // hdr.gtpu_ext_psc.len,
+                // hdr.gtpu_ext_psc.type,
+                meta.udp_csum_tmp
+            });
+        }
+        
 
         // TODO: recompute UDP checksum
         pkt.emit(hdr);
