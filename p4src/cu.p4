@@ -159,9 +159,9 @@ parser SwitchIngressParser(packet_in        pkt,
 
         udp_checksum.subtract({
             hdr.ipv4.src_addr,              // 4 byte
-            hdr.ipv4.dst_addr              // 4 byte
+            hdr.ipv4.dst_addr,              // 4 byte
             // 8w0, hdr.ipv4.protocol,         // 2 byte
-            // hdr.ipv4.total_len              // 2 byte
+            hdr.ipv4.total_len              // 2 byte
         });
 
         transition select(hdr.ipv4.protocol) {
@@ -178,9 +178,9 @@ parser SwitchIngressParser(packet_in        pkt,
     state parse_udp {
         pkt.extract(hdr.udp);
 
-        udp_checksum.subtract({
-            hdr.udp.length                 // 2 byte
-        });
+        // udp_checksum.subtract({
+        //     hdr.udp.length                 // 2 byte
+        // });
     
         udp_checksum.subtract({
             hdr.udp.src_port,               // 2 byte
@@ -286,7 +286,8 @@ control SwitchIngress(
         }
         default_action = NoAction();
         const entries = {
-            (0xc0a84690 &&& 0xffffffff) : ipv4_forward_action(5);
+            (0xc0a84690 &&& 0xffffffff) : ipv4_forward_action(5);       // CU(N3) - 192.168.70.144 @ tofino2b[enp4s0f0], 33/3
+            (0xc0a84692 &&& 0xffffffff) : ipv4_forward_action(5);       // CU(F1) - 192.168.70.146 @ tofino2b[enp4s0f0], 33/3
             (0xc0a84691 &&& 0xffffffff) : ipv4_forward_action(136);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
             (0xc0a84684 &&& 0xffffffff) : ipv4_forward_action(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
             (0xc0a84580 &&& 0xffffff00) : ipv4_forward_action(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
@@ -353,12 +354,15 @@ control SwitchIngress(
         hdr.ipv4.src_addr = IP_ADDR_CU;
         hdr.ipv4.dst_addr = IP_ADDR_UPF;
 
+        hdr.ethernet.dst_addr = 0x08c0ebd418a3;
+
         // adjust packet length
         hdr.ipv4.total_len = hdr.ipv4.total_len + 5; 
         hdr.udp.length = hdr.udp.length + 5;
 
         // must recompute checksum
-        meta.recompute_udp_csum = true;
+        // meta.recompute_udp_csum = true;
+        hdr.udp.checksum = 0;
     }
 
     table fastpath_f1_to_n3 {
@@ -400,8 +404,11 @@ control SwitchIngress(
         hdr.ipv4.total_len = hdr.ipv4.total_len - 5; 
         hdr.udp.length = hdr.udp.length - 5;
 
+        hdr.ethernet.dst_addr = 0x649d99b1260e;
+
         // must recompute checksum
-        meta.recompute_udp_csum = true;
+        // meta.recompute_udp_csum = true;
+        hdr.udp.checksum = 0;
     }
 
     table fastpath_n3_to_f1 {
@@ -453,7 +460,7 @@ control SwitchIngressDeparser(packet_out pkt,
     Checksum() udp_checksum;
 
     apply {
-        if(meta.recompute_udp_csum) {
+        // if(meta.recompute_udp_csum) {
             hdr.ipv4.hdr_checksum = ipv4_checksum.update({
                 hdr.ipv4.version,
                 hdr.ipv4.ihl,
@@ -467,15 +474,15 @@ control SwitchIngressDeparser(packet_out pkt,
                 hdr.ipv4.src_addr,
                 hdr.ipv4.dst_addr
             });
-        }
+        // }
 
         if(meta.recompute_udp_csum) {
             if(hdr.gtpu_next_ex.isValid()) {
                 udp_checksum.update(data = {
                     hdr.ipv4.src_addr,              // 4 byte
                     hdr.ipv4.dst_addr,              // 4 byte
-                    // hdr.ipv4.total_len,             // 2 byte
-                    hdr.udp.length,                 // 2 byte
+                    hdr.ipv4.total_len,             // 2 byte
+                    // hdr.udp.length,                 // 2 byte
                     hdr.udp.src_port,               // 2 byte
                     hdr.udp.dst_port,               // 2 byte
                     hdr.udp.length,                 // 2 byte
@@ -496,8 +503,8 @@ control SwitchIngressDeparser(packet_out pkt,
                 udp_checksum.update(data = {
                     hdr.ipv4.src_addr,              // 4 byte
                     hdr.ipv4.dst_addr,              // 4 byte
-                    // hdr.ipv4.total_len,             // 2 byte
-                    hdr.udp.length,                 // 2 byte
+                    hdr.ipv4.total_len,             // 2 byte
+                    // hdr.udp.length,                 // 2 byte
                     hdr.udp.src_port,               // 2 byte
                     hdr.udp.dst_port,               // 2 byte
                     hdr.udp.length,                 // 2 byte
