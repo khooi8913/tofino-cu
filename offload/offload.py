@@ -1,6 +1,5 @@
 import sys
 import ipaddress
-import bfruntime_pb2
 
 from scapy.all import *
 
@@ -10,6 +9,8 @@ sys.path.append('%s/lib/python2.7/site-packages/p4testutils'%(sde_install))
 sys.path.append('%s/lib/python2.7/site-packages'%(sde_install))
 
 # Assumes valid PYTHONPATH
+import grpc
+import bfrt_grpc.bfruntime_pb2 as bfrt_grpc
 import bfrt_grpc.client as gc
 
 # Connect to the BF Runtime server
@@ -43,7 +44,7 @@ target = gc.Target(device_id=0, pipe_id=0xffff)
 # ==============================
 IP_ADDR_CU = "192.168.70.144"
 IP_ADDR_DU = "192.168.70.145"
-IP_ADDR_UPF = "192.168.70.134"
+IP_ADDR_UPF = "192.168.69.134"
 
 UDP_PORT_F1 = 2153
 UDP_PORT_N3 = 2152
@@ -173,7 +174,9 @@ def learn_cu_to_du(pkt):
 
 is_pushed = dict()
 assigned_user_idx = 0
+
 def push_to_data_plane(ul_key, dl_key):
+    global assigned_user_idx
     print(ul_key, dl_key)
     index = (ul_key, dl_key)
     if not index in is_pushed:
@@ -186,10 +189,10 @@ def push_to_data_plane(ul_key, dl_key):
         print("UPLINK TEID (F1 to N3) MAPPING", f1_ul_teid, "TO", n3_ul_teid, "with QFI", n3_ul_qfi)
 
         # Calling the bfrt tables
-        fast_f1_to_n3 = bfrt_info.table_get('pipe.Ingress.fastpath_f1_to_n3')
+        fast_f1_to_n3 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_f1_to_n3')
         fast_f1_to_n3_key = [fast_f1_to_n3.make_key([gc.KeyTuple("hdr.gtpu.teid", f1_ul_teid)])]
         fast_f1_to_n3_data = [fast_f1_to_n3.make_data([gc.DataTuple("teid", n3_ul_teid), 
-                                                       gc.DataTuple("qfi", n3_ul_qfi)],'Ingress.rewrite_f1_to_n3')]
+                                                       gc.DataTuple("qfi", n3_ul_qfi)],'SwitchIngress.rewrite_f1_to_n3')]
         
         fast_f1_to_n3.entry_add(target, fast_f1_to_n3_key, fast_f1_to_n3_data)
  
@@ -205,22 +208,20 @@ def push_to_data_plane(ul_key, dl_key):
         print("DOWNLINK TEID (N3 to F1) MAPPING", n3_dl_teid, "TO", f1_dl_teid, "with SeqNumber", f1_dl_seq_num, "and NPDU", f1_dl_npdu)
 
 
-        fast_n3_to_f1 = bfrt_info.table_get('pipe.Ingress.fastpath_n3_to_f1')
+        fast_n3_to_f1 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_n3_to_f1')
         fast_n3_to_f1_key = [fast_n3_to_f1.make_key([gc.KeyTuple("hdr.gtpu.teid", n3_dl_teid)])]
         fast_n3_to_f1_data = [fast_n3_to_f1.make_data([gc.DataTuple("teid", f1_dl_teid), 
                                                        gc.DataTuple("seq_num", f1_dl_seq_num),
-                                                       gc.KeyTuple("index", assigned_user_idx)]), 'rewrite_n3_to_f1']
+                                                       gc.DataTuple("index", assigned_user_idx)], 'SwitchIngress.rewrite_n3_to_f1')]
         
-        fast_f1_to_n3.entry_add(target, fast_n3_to_f1_key, fast_n3_to_f1_data)
+        fast_n3_to_f1.entry_add(target, fast_n3_to_f1_key, fast_n3_to_f1_data)
 
            
         # Initialize the register
-        npdu_reg = bfrt_info.table_get("pipe.Ingress.npdu_reg")
+        npdu_reg = bfrt_info.table_get("pipe.SwitchIngress.npdu_reg")
         npdu_keys = [npdu_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', assigned_user_idx)])]
-        npdu_data = [npdu_reg.make_data([gc.DataTuple('Ingress.npdu_reg.f1', f1_dl_npdu)])]
-
+        npdu_data = [npdu_reg.make_data([gc.DataTuple('SwitchIngress.npdu_reg.f1', f1_dl_npdu)])]
         npdu_reg.entry_mod(target, npdu_keys, npdu_data)
-
 
         assigned_user_idx += 1
 

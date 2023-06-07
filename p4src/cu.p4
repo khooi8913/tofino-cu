@@ -307,7 +307,8 @@ control SwitchIngress(
         hdr.ipv4.dst_addr = IP_ADDR_UPF;
 
         // for checksum validation
-        hdr.ipv4.identification = 0xcbbd;
+        // hdr.ipv4.identification = 0xcbbd;
+        hdr.udp.checksum = 0;
 
         // adjust packet length
         hdr.ipv4.total_len = hdr.ipv4.total_len + 5; 
@@ -348,6 +349,8 @@ control SwitchIngress(
         hdr.udp.dst_port= UDP_PORT_F1;
         hdr.ipv4.src_addr = IP_ADDR_CU;
         hdr.ipv4.dst_addr = IP_ADDR_DU;
+
+        hdr.udp.checksum = 0;
 
         // adjust packet length
         hdr.ipv4.total_len = hdr.ipv4.total_len - 5; 
@@ -403,7 +406,7 @@ control SwitchIngressDeparser(packet_out pkt,
     in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md)
 {
     Checksum() ipv4_checksum;
-    Checksum() udp_checksum;
+    // Checksum() udp_checksum;
 
     apply {
         hdr.ipv4.hdr_checksum = ipv4_checksum.update({
@@ -420,11 +423,11 @@ control SwitchIngressDeparser(packet_out pkt,
             hdr.ipv4.dst_addr
         });
 
-        hdr.udp.checksum = udp_checksum.update({
-            hdr.udp.src_port,
-            hdr.udp.dst_port,
-            hdr.udp.length
-        });
+        // hdr.udp.checksum = udp_checksum.update({
+        //     hdr.udp.src_port,
+        //     hdr.udp.dst_port,
+        //     hdr.udp.length
+        // });
 
         // TODO: recompute UDP checksum
         pkt.emit(hdr);
