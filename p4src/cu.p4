@@ -269,6 +269,9 @@ control SwitchIngress(
         hdr.ipv4.src_addr = IP_ADDR_CU;
         hdr.ipv4.dst_addr = IP_ADDR_UPF;
 
+        // for checksum validation
+        hdr.ipv4.identification = 0xcbbd;
+
         // adjust packet length
         hdr.ipv4.total_len = hdr.ipv4.total_len + 5; 
         hdr.udp.length = hdr.udp.length + 5;
@@ -329,8 +332,6 @@ control SwitchIngress(
 
     apply {
         if(hdr.ipv4.isValid()) { 
-            
-            ipv4_forward.apply();  
 
             if(ig_intr_md.ingress_port != CPU_PORT){ 
                 if(hdr.gtpu.isValid()) {
@@ -349,6 +350,8 @@ control SwitchIngress(
                 // GTP or SCTP
                 // from CPU port
             }
+                        
+            ipv4_forward.apply();  
         }
     }
 }
@@ -358,7 +361,30 @@ control SwitchIngressDeparser(packet_out pkt,
     in    switch_metadata_t                      meta,
     in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md)
 {
+    Checksum() ipv4_checksum;
+    Checksum() udp_checksum;
+
     apply {
+        hdr.ipv4.hdr_checksum = ipv4_checksum.update({
+            hdr.ipv4.version,
+            hdr.ipv4.ihl,
+            hdr.ipv4.diffserv,
+            hdr.ipv4.total_len,
+            hdr.ipv4.identification,
+            hdr.ipv4.flags,
+            hdr.ipv4.frag_offset,
+            hdr.ipv4.ttl,
+            hdr.ipv4.protocol,
+            hdr.ipv4.src_addr,
+            hdr.ipv4.dst_addr
+        });
+
+        hdr.udp.checksum = udp_checksum.update({
+            hdr.udp.src_port,
+            hdr.udp.dst_port,
+            hdr.udp.length
+        });
+
         // TODO: recompute UDP checksum
         pkt.emit(hdr);
     }

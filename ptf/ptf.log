@@ -1,55 +1,55 @@
-13:19:00.995  root      : INFO    : ++++++++ Wed Jun  7 13:19:00 2023 ++++++++
-13:19:01.188  root      : INFO    : ROCEv2 support found in Scapy
-13:19:01.188  root      : INFO    : ERSPAN support found in Scapy
-13:19:01.189  root      : INFO    : GENEVE support found in Scapy
-13:19:01.190  root      : INFO    : MPLS support found in Scapy
-13:19:01.190  root      : INFO    : IGMP support found in Scapy
-13:19:01.193  root      : DEBUG   : Parsed test parameters:
-13:19:01.193  root      : DEBUG   : 	*arch=tofino2
-13:19:01.193  root      : DEBUG   : 	*p4_name=cu
-13:19:01.193  root      : DEBUG   : 	*target=asic-model
-13:19:01.193  root      : DEBUG   : 	*use_pi=False
-13:19:01.193  root      : DEBUG   : 	*traffic_gen=None
-13:19:01.193  root      : DEBUG   : 	*config_file=filename
-13:19:01.193  root      : DEBUG   : 	*drivers_test_info=None
-13:19:01.193  root      : DEBUG   : 	*test_seed=None
-13:19:01.193  root      : DEBUG   : 	*num_pipes=4
-13:19:01.193  root      : DEBUG   : 	*pkt_size=100
-13:19:01.193  root      : DEBUG   : 	*port_mode=100g
-13:19:01.193  root      : DEBUG   : 	*counter_byte_adjust=0
-13:19:01.193  root      : DEBUG   : 	*setup=False
-13:19:01.193  root      : DEBUG   : 	*cleanup=False
-13:19:01.193  root      : DEBUG   : 	*p4c=
-13:19:01.193  root      : DEBUG   : 	*thrift_server=localhost
-13:19:01.193  root      : DEBUG   : 	*grpc_server=localhost
-13:19:01.193  root      : DEBUG   : 	*reboot=none
-13:19:01.193  root      : DEBUG   : If something is missing, make sure you used the correct syntax: --test-params="[k=v;]*k=v"
-13:19:01.389  root      : INFO    : Importing platform: eth
-13:19:01.389  root      : DEBUG   : Configuration: {'list': False, 'list_test_names': False, 'allow_user': False, 'test_spec': '', 'test_file': None, 'test_dir': '/home/archit/tofino-cu/ptf/', 'test_order': 'default', 'test_order_seed': 2746, 'num_shards': 1, 'shard_id': 0, 'platform': 'eth', 'platform_args': None, 'platform_dir': '/home/archit/bf-sde-9.11.1/install/lib/python3.8/site-packages/ptf/platforms', 'interfaces': [(0, 8, 'veth1'), (0, 9, 'veth3'), (0, 10, 'veth5'), (0, 11, 'veth7'), (0, 12, 'veth9'), (0, 13, 'veth11'), (0, 14, 'veth13'), (0, 15, 'veth15'), (0, 16, 'veth17'), (0, 17, 'veth19'), (0, 18, 'veth21'), (0, 19, 'veth23'), (0, 20, 'veth25'), (0, 21, 'veth27'), (0, 22, 'veth29'), (0, 23, 'veth31'), (0, 24, 'veth33'), (0, 2, 'veth251')], 'port_info': {}, 'device_sockets': [], 'log_file': 'ptf.log', 'log_dir': None, 'debug': 'verbose', 'profile': False, 'profile_file': 'profile.out', 'xunit': False, 'xunit_dir': 'xunit', 'relax': False, 'test_params': "arch='tofino2';p4_name='cu';target='asic-model';use_pi='False';traffic_gen='None';config_file='filename';drivers_test_info='None';test_seed='None';num_pipes='4';pkt_size='100';port_mode='100g';counter_byte_adjust='0';setup=False;cleanup=False;p4c='';thrift_server='localhost';grpc_server='localhost';reboot='none';", 'failfast': False, 'fail_skipped': False, 'default_timeout': 2.0, 'default_negative_timeout': 0.1, 'minsize': 0, 'random_seed': None, 'disable_ipv6': False, 'disable_vxlan': False, 'disable_erspan': False, 'disable_geneve': False, 'disable_mpls': False, 'disable_nvgre': False, 'disable_igmp': False, 'disable_rocev2': False, 'qlen': 100, 'test_case_timeout': None, 'socket_recv_size': 10240, 'packet_manipulation_module': 'ptf.packet_scapy', 'port_map': {(0, 8): 'veth1', (0, 9): 'veth3', (0, 10): 'veth5', (0, 11): 'veth7', (0, 12): 'veth9', (0, 13): 'veth11', (0, 14): 'veth13', (0, 15): 'veth15', (0, 16): 'veth17', (0, 17): 'veth19', (0, 18): 'veth21', (0, 19): 'veth23', (0, 20): 'veth25', (0, 21): 'veth27', (0, 22): 'veth29', (0, 23): 'veth31', (0, 24): 'veth33', (0, 2): 'veth251'}}
-13:19:01.389  root      : INFO    : port map: {(0, 8): 'veth1', (0, 9): 'veth3', (0, 10): 'veth5', (0, 11): 'veth7', (0, 12): 'veth9', (0, 13): 'veth11', (0, 14): 'veth13', (0, 15): 'veth15', (0, 16): 'veth17', (0, 17): 'veth19', (0, 18): 'veth21', (0, 19): 'veth23', (0, 20): 'veth25', (0, 21): 'veth27', (0, 22): 'veth29', (0, 23): 'veth31', (0, 24): 'veth33', (0, 2): 'veth251'}
-13:19:01.389  root      : INFO    : Autogen random seed: 76754271
-13:19:01.394  root      : INFO    : *** TEST RUN START: Wed Jun  7 13:19:01 2023
-13:19:01.395  root      : INFO    : ** START TEST CASE test.CU
-13:19:01.399  bfruntime_grpc_client: INFO    : Subscribe attempt #1
-13:19:01.401  bfruntime_grpc_client: INFO    : Subscribe response received 0
-13:19:01.434  bfruntime_grpc_client: INFO    : Received cu on GetForwarding on client 0, device 0
-13:19:01.444  bfruntime_grpc_client: INFO    : Binding with p4_name cu
-13:19:01.445  bfruntime_grpc_client: INFO    : Binding with p4_name cu successful!!
-13:19:01.473  bfruntime_grpc_client: INFO    : Received cu on GetForwarding on client 0, device 0
-13:19:01.557  dataplane : DEBUG   : Sending 137 bytes to device 0, port 8
-13:19:01.561  root      : DEBUG   : Checking for pkt on device 0, port 9
-13:19:01.561  dataplane : DEBUG   : Grabbing packet
-13:19:01.561  dataplane : DEBUG   : Out of packets on device 0, port 9
-13:19:01.561  dataplane : DEBUG   : Did not find packet
-13:19:01.574  dataplane : DEBUG   : Pkt len 142 in on device 0, port 9
-13:19:01.574  dataplane : DEBUG   : Grabbing packet
-13:19:01.574  dataplane : DEBUG   : Checking packet from device 0, port 9
-13:19:01.574  dataplane : DEBUG   : Out of packets on device 0, port 9
-13:19:01.574  dataplane : DEBUG   : Did not find packet
-13:19:02.575  dataplane : DEBUG   : Grabbing packet
-13:19:02.575  dataplane : DEBUG   : Out of packets on device 0, port 9
-13:19:02.576  dataplane : DEBUG   : Did not find packet
-13:19:03.561  dataplane : DEBUG   : Poll timeout, no packet from device 0, port 9
-13:19:03.587  root      : INFO    : ** END TEST CASE test.CU
-13:19:03.590  root      : INFO    : *** TEST RUN END  : Wed Jun  7 13:19:03 2023
-13:19:03.591  dataplane : INFO    : Thread exit
+14:19:27.833  root      : INFO    : ++++++++ Wed Jun  7 14:19:27 2023 ++++++++
+14:19:28.043  root      : INFO    : ROCEv2 support found in Scapy
+14:19:28.044  root      : INFO    : ERSPAN support found in Scapy
+14:19:28.045  root      : INFO    : GENEVE support found in Scapy
+14:19:28.045  root      : INFO    : MPLS support found in Scapy
+14:19:28.046  root      : INFO    : IGMP support found in Scapy
+14:19:28.048  root      : DEBUG   : Parsed test parameters:
+14:19:28.048  root      : DEBUG   : 	*arch=tofino2
+14:19:28.048  root      : DEBUG   : 	*p4_name=cu
+14:19:28.048  root      : DEBUG   : 	*target=asic-model
+14:19:28.048  root      : DEBUG   : 	*use_pi=False
+14:19:28.048  root      : DEBUG   : 	*traffic_gen=None
+14:19:28.048  root      : DEBUG   : 	*config_file=filename
+14:19:28.048  root      : DEBUG   : 	*drivers_test_info=None
+14:19:28.048  root      : DEBUG   : 	*test_seed=None
+14:19:28.048  root      : DEBUG   : 	*num_pipes=4
+14:19:28.048  root      : DEBUG   : 	*pkt_size=100
+14:19:28.048  root      : DEBUG   : 	*port_mode=100g
+14:19:28.048  root      : DEBUG   : 	*counter_byte_adjust=0
+14:19:28.048  root      : DEBUG   : 	*setup=False
+14:19:28.048  root      : DEBUG   : 	*cleanup=False
+14:19:28.048  root      : DEBUG   : 	*p4c=
+14:19:28.048  root      : DEBUG   : 	*thrift_server=localhost
+14:19:28.048  root      : DEBUG   : 	*grpc_server=localhost
+14:19:28.048  root      : DEBUG   : 	*reboot=none
+14:19:28.048  root      : DEBUG   : If something is missing, make sure you used the correct syntax: --test-params="[k=v;]*k=v"
+14:19:28.253  root      : INFO    : Importing platform: eth
+14:19:28.253  root      : DEBUG   : Configuration: {'list': False, 'list_test_names': False, 'allow_user': False, 'test_spec': '', 'test_file': None, 'test_dir': '/home/archit/tofino-cu/ptf/', 'test_order': 'default', 'test_order_seed': 2746, 'num_shards': 1, 'shard_id': 0, 'platform': 'eth', 'platform_args': None, 'platform_dir': '/home/archit/bf-sde-9.11.1/install/lib/python3.8/site-packages/ptf/platforms', 'interfaces': [(0, 8, 'veth1'), (0, 9, 'veth3'), (0, 10, 'veth5'), (0, 11, 'veth7'), (0, 12, 'veth9'), (0, 13, 'veth11'), (0, 14, 'veth13'), (0, 15, 'veth15'), (0, 16, 'veth17'), (0, 17, 'veth19'), (0, 18, 'veth21'), (0, 19, 'veth23'), (0, 20, 'veth25'), (0, 21, 'veth27'), (0, 22, 'veth29'), (0, 23, 'veth31'), (0, 24, 'veth33'), (0, 2, 'veth251')], 'port_info': {}, 'device_sockets': [], 'log_file': 'ptf.log', 'log_dir': None, 'debug': 'verbose', 'profile': False, 'profile_file': 'profile.out', 'xunit': False, 'xunit_dir': 'xunit', 'relax': False, 'test_params': "arch='tofino2';p4_name='cu';target='asic-model';use_pi='False';traffic_gen='None';config_file='filename';drivers_test_info='None';test_seed='None';num_pipes='4';pkt_size='100';port_mode='100g';counter_byte_adjust='0';setup=False;cleanup=False;p4c='';thrift_server='localhost';grpc_server='localhost';reboot='none';", 'failfast': False, 'fail_skipped': False, 'default_timeout': 2.0, 'default_negative_timeout': 0.1, 'minsize': 0, 'random_seed': None, 'disable_ipv6': False, 'disable_vxlan': False, 'disable_erspan': False, 'disable_geneve': False, 'disable_mpls': False, 'disable_nvgre': False, 'disable_igmp': False, 'disable_rocev2': False, 'qlen': 100, 'test_case_timeout': None, 'socket_recv_size': 10240, 'packet_manipulation_module': 'ptf.packet_scapy', 'port_map': {(0, 8): 'veth1', (0, 9): 'veth3', (0, 10): 'veth5', (0, 11): 'veth7', (0, 12): 'veth9', (0, 13): 'veth11', (0, 14): 'veth13', (0, 15): 'veth15', (0, 16): 'veth17', (0, 17): 'veth19', (0, 18): 'veth21', (0, 19): 'veth23', (0, 20): 'veth25', (0, 21): 'veth27', (0, 22): 'veth29', (0, 23): 'veth31', (0, 24): 'veth33', (0, 2): 'veth251'}}
+14:19:28.253  root      : INFO    : port map: {(0, 8): 'veth1', (0, 9): 'veth3', (0, 10): 'veth5', (0, 11): 'veth7', (0, 12): 'veth9', (0, 13): 'veth11', (0, 14): 'veth13', (0, 15): 'veth15', (0, 16): 'veth17', (0, 17): 'veth19', (0, 18): 'veth21', (0, 19): 'veth23', (0, 20): 'veth25', (0, 21): 'veth27', (0, 22): 'veth29', (0, 23): 'veth31', (0, 24): 'veth33', (0, 2): 'veth251'}
+14:19:28.253  root      : INFO    : Autogen random seed: 69884338
+14:19:28.257  root      : INFO    : *** TEST RUN START: Wed Jun  7 14:19:28 2023
+14:19:28.258  root      : INFO    : ** START TEST CASE test.CU
+14:19:28.262  bfruntime_grpc_client: INFO    : Subscribe attempt #1
+14:19:28.264  bfruntime_grpc_client: INFO    : Subscribe response received 0
+14:19:28.297  bfruntime_grpc_client: INFO    : Received cu on GetForwarding on client 0, device 0
+14:19:28.310  bfruntime_grpc_client: INFO    : Binding with p4_name cu
+14:19:28.311  bfruntime_grpc_client: INFO    : Binding with p4_name cu successful!!
+14:19:28.336  bfruntime_grpc_client: INFO    : Received cu on GetForwarding on client 0, device 0
+14:19:28.412  dataplane : DEBUG   : Sending 137 bytes to device 0, port 8
+14:19:28.416  root      : DEBUG   : Checking for pkt on device 0, port 9
+14:19:28.416  dataplane : DEBUG   : Grabbing packet
+14:19:28.416  dataplane : DEBUG   : Out of packets on device 0, port 9
+14:19:28.416  dataplane : DEBUG   : Did not find packet
+14:19:28.428  dataplane : DEBUG   : Pkt len 142 in on device 0, port 9
+14:19:28.428  dataplane : DEBUG   : Grabbing packet
+14:19:28.429  dataplane : DEBUG   : Checking packet from device 0, port 9
+14:19:28.429  dataplane : DEBUG   : Out of packets on device 0, port 9
+14:19:28.429  dataplane : DEBUG   : Did not find packet
+14:19:29.429  dataplane : DEBUG   : Grabbing packet
+14:19:29.429  dataplane : DEBUG   : Out of packets on device 0, port 9
+14:19:29.429  dataplane : DEBUG   : Did not find packet
+14:19:30.416  dataplane : DEBUG   : Poll timeout, no packet from device 0, port 9
+14:19:30.449  root      : INFO    : ** END TEST CASE test.CU
+14:19:30.454  root      : INFO    : *** TEST RUN END  : Wed Jun  7 14:19:30 2023
+14:19:30.454  dataplane : INFO    : Thread exit
