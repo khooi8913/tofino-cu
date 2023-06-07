@@ -185,8 +185,8 @@ class CU(P4ProgramTest):
         programTable(self.forward, [
                     ([("hdr.ipv4.dst_addr", 0xc0a84690)],
                     "SwitchIngress.ipv4_forward_action", [("port", egress_port)]),
-                    # ([("hdr.ipv4.dst_addr", 0xc0a84686)],
-                    # "SwitchIngress.ipv4_forward_action", [("port", egress_port)])
+                    ([("hdr.ipv4.dst_addr", 0xc0a84686)],
+                    "SwitchIngress.ipv4_forward_action", [("port", egress_port)])
                     ]        
                      , self.dev_tgt)
 
