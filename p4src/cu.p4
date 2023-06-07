@@ -5,10 +5,17 @@
 #include <tna.p4>
 #endif
 
+/*************************************************************************
+ ************* C O N S T A N T S    A N D   T Y P E S  *******************
+**************************************************************************/
+const int MCAST_GRP_ID = 1;
+
 typedef bit<16> ether_type_t;
 typedef bit<8> ip_protocol_t;
 
 const ether_type_t ETHERTYPE_IPV4 = 16w0x0800;
+const ether_type_t ETHERTYPE_ARP = 16w0x0806;
+
 const ip_protocol_t IP_PROTOCOLS_UDP = 0x11;
 
 const bit<16> UDP_PORT_N3 = 0x0868; // from core-- 2152
@@ -16,7 +23,7 @@ const bit<16> UDP_PORT_F1 = 0x0869; // towards core-- 2153
 
 const bit<32> IP_ADDR_CU = 0xc0a84690;      // 192.168.70.144
 const bit<32> IP_ADDR_DU = 0xc0a84691;      // 192.168.70.145
-const bit<32> IP_ADDR_UPF = 0xc0a84686;     // 192.168.70.134
+const bit<32> IP_ADDR_UPF = 0xc0a84586;     // 192.168.69.134
 
 #if __TARGET_TOFINO__ == 2
 const bit<9> CPU_PORT = 0x05;
@@ -24,10 +31,26 @@ const bit<9> CPU_PORT = 0x05;
 const bit<9> CPU_PORT = 0x00;
 #endif
 
+/*************************************************************************
+ ***********************  H E A D E R S  *********************************
+ *************************************************************************/
+
 header ethernet_h {
     bit<48>   dst_addr;
     bit<48>   src_addr;
     bit<16>   ether_type;
+}
+
+header arp_h {
+    bit<16> htype;
+    bit<16> ptype;
+    bit<8> hlen;
+    bit<8> plen;
+    bit<16> oper;
+    bit<48> sender_hw_addr;
+    bit<32> sender_ip_addr;
+    bit<48> target_hw_addr;
+    bit<32> target_ip_addr;
 }
 
 header ipv4_h {
@@ -89,6 +112,7 @@ header gtpu_ext_psc_h {
 
 struct switch_headers_t {
     ethernet_h  ethernet;
+    arp_h       arp;
     ipv4_h      ipv4;
     udp_h       udp;
     gtpu_h      gtpu;
@@ -120,6 +144,7 @@ parser SwitchIngressParser(packet_in        pkt,
         pkt.extract(hdr.ethernet);
         transition select(hdr.ethernet.ether_type) {
             ETHERTYPE_IPV4 : parse_ipv4;
+            ETHERTYPE_ARP  : parse_arp;
         }
     }
 
@@ -129,6 +154,11 @@ parser SwitchIngressParser(packet_in        pkt,
             IP_PROTOCOLS_UDP : parse_udp;
             default: accept;
         }
+    }
+
+    state parse_arp {
+        pkt.extract(hdr.arp);
+		transition accept;
     }
 
     state parse_udp {
@@ -201,13 +231,20 @@ control SwitchIngress(
 
     table ipv4_forward {
         key = {
-            hdr.ipv4.dst_addr : exact;
+            hdr.ipv4.dst_addr : ternary;
         }
         actions = {
             ipv4_forward_action;
             NoAction;
         }
         default_action = NoAction();
+        const entries = {
+            (0xc0a84690 &&& 0xffffffff) : ipv4_forward_action(5);
+            (0xc0a84691 &&& 0xffffffff) : ipv4_forward_action(136);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
+            (0xc0a84684 &&& 0xffffffff) : ipv4_forward_action(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+            (0xc0a84580 &&& 0xffffff00) : ipv4_forward_action(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+        }
+        size = 64;
     }
 
     action set_origin_f1() {
@@ -331,8 +368,12 @@ control SwitchIngress(
 
 
     apply {
-        if(hdr.ipv4.isValid()) { 
-
+        if(hdr.ethernet.ether_type == ETHERTYPE_ARP){
+			// do the broadcast to all involved ports
+			ig_tm_md.mcast_grp_a = MCAST_GRP_ID;
+			ig_tm_md.rid = 0;
+		}
+        else { 
             if(ig_intr_md.ingress_port != CPU_PORT){ 
                 if(hdr.gtpu.isValid()) {
                     get_origin.apply();
