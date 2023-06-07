@@ -164,14 +164,7 @@ def learn_cu_to_du(pkt):
     # hexdump(gtp_headers)
     # hexdump(gtp_payload)
     gtp_fields = parse_gtp(gtp_headers)
-    
-    # Initialize the register
-    npdu_reg = bfrt_info.table_get("pipe.Ingress.npdu_reg")
-    npdu_keys = [npdu_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', 0)])]
-    npdu_data = [npdu_reg.make_data([gc.DataTuple('Ingress.npdu_reg.f1',gtp_fields[2])])]
-
-    npdu_reg.entry_mod(target, npdu_keys, npdu_data)
-
+ 
     ip_pkt = IP(bytes(gtp_payload))
     if ip_pkt.getlayer("IP").version == 4:
         ip_pair = ip_pkt.getlayer("IP").src, ip_pkt.getlayer("IP").dst
@@ -179,6 +172,7 @@ def learn_cu_to_du(pkt):
             cu_to_du[ip_pair] = gtp_fields
 
 is_pushed = dict()
+assigned_user_idx = 0
 def push_to_data_plane(ul_key, dl_key):
     print(ul_key, dl_key)
     index = (ul_key, dl_key)
@@ -210,23 +204,25 @@ def push_to_data_plane(ul_key, dl_key):
 
         print("DOWNLINK TEID (N3 to F1) MAPPING", n3_dl_teid, "TO", f1_dl_teid, "with SeqNumber", f1_dl_seq_num, "and NPDU", f1_dl_npdu)
 
-        # ---- Fetch NPDU value first
-        npdu_reg = bfrt_info.table_get("pipe.Ingress.npdu_reg")
-        key = [npdu_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', 0)])]
-
-        for data, key in npdu_reg.entry_get(target, key, {"from_hw": True}):
-            out = data.to_dict()["Ingress.npdu_reg.f1"]
-
-        f1_dl_npdu = out[0]
 
         fast_n3_to_f1 = bfrt_info.table_get('pipe.Ingress.fastpath_n3_to_f1')
         fast_n3_to_f1_key = [fast_n3_to_f1.make_key([gc.KeyTuple("hdr.gtpu.teid", n3_dl_teid)])]
         fast_n3_to_f1_data = [fast_n3_to_f1.make_data([gc.DataTuple("teid", f1_dl_teid), 
                                                        gc.DataTuple("seq_num", f1_dl_seq_num),
-                                                       gc.KeyTuple("npdu_num", f1_dl_npdu)]), 'rewrite_n3_to_f1']
+                                                       gc.KeyTuple("index", assigned_user_idx)]), 'rewrite_n3_to_f1']
         
         fast_f1_to_n3.entry_add(target, fast_n3_to_f1_key, fast_n3_to_f1_data)
- 
+
+           
+        # Initialize the register
+        npdu_reg = bfrt_info.table_get("pipe.Ingress.npdu_reg")
+        npdu_keys = [npdu_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', assigned_user_idx)])]
+        npdu_data = [npdu_reg.make_data([gc.DataTuple('Ingress.npdu_reg.f1', f1_dl_npdu)])]
+
+        npdu_reg.entry_mod(target, npdu_keys, npdu_data)
+
+
+        assigned_user_idx += 1
 
         print("offloaded!")
         is_pushed[index] = True

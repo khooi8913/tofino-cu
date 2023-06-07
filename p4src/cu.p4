@@ -179,6 +179,16 @@ control SwitchIngress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md)
 {
+    // First val in <,> is size and second is index
+    Register<bit<8>,bit<8>>(10,0x0) npdu_reg;
+    
+    // Keep the npdu count based on the (16-bit) index of the register
+    RegisterAction<bit<8>, bit<8>, bit<8>>(npdu_reg) fetch_npdu = {
+        void apply(inout bit<8> np, out bit<8> rv) {
+            np = np + 1;
+            rv = np; 
+        }
+    };
 
     action drop() {
         ig_dprsr_md.drop_ctl = 0x01;
@@ -259,6 +269,9 @@ control SwitchIngress(
         hdr.ipv4.src_addr = IP_ADDR_CU;
         hdr.ipv4.dst_addr = IP_ADDR_UPF;
 
+        // for checksum validation
+        hdr.ipv4.identification = 0xcbbd;
+
         // adjust packet length
         hdr.ipv4.total_len = hdr.ipv4.total_len + 5; 
         hdr.udp.length = hdr.udp.length + 5;
@@ -276,7 +289,7 @@ control SwitchIngress(
     }
 
     // N3 to F1 --------------------------------------------------------------------
-    action rewrite_n3_to_f1(bit<32> teid, bit<16> seq_num, bit<8> npdu_num) {
+    action rewrite_n3_to_f1(bit<32> teid, bit<16> seq_num, bit<8> index) {
         hdr.gtpu.version = 3w0b001;     /* version */
         hdr.gtpu.pt = 1;                /* protocol type */
         hdr.gtpu.spare = 0;             /* reserved */
@@ -292,7 +305,7 @@ control SwitchIngress(
         hdr.gtpu.teid=teid;             /* tunnel endpoint id */ 
 
         hdr.gtpu_options.seq_num = seq_num;
-        hdr.gtpu_options.n_pdu_num = npdu_num;
+        hdr.gtpu_options.n_pdu_num = fetch_npdu.execute(index);
 
         hdr.udp.src_port= UDP_PORT_F1;
         hdr.udp.dst_port= UDP_PORT_F1;
@@ -315,18 +328,11 @@ control SwitchIngress(
         default_action = NoAction;
     }
 
-    apply {
 
-        // First val in <,> is size and second is index
-        Register<bit<32>,bit<8>>(1,0x0) npdu_reg;
-        
-        // for keeping the packet loss count
-        RegisterAction<bit<32>, bit<8>, bit<32>>(npdu_reg) fetch_npdu = {
-            void apply(inout bit<8> np) {
-                np = np + 1;
-            }
-        };
-        if(hdr.ipv4.isValid()) {            
+
+    apply {
+        if(hdr.ipv4.isValid()) { 
+
             if(ig_intr_md.ingress_port != CPU_PORT){ 
                 if(hdr.gtpu.isValid()) {
                     get_origin.apply();
@@ -344,8 +350,8 @@ control SwitchIngress(
                 // GTP or SCTP
                 // from CPU port
             }
-
-            ipv4_forward.apply();
+                        
+            ipv4_forward.apply();  
         }
     }
 }
@@ -355,7 +361,30 @@ control SwitchIngressDeparser(packet_out pkt,
     in    switch_metadata_t                      meta,
     in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md)
 {
+    Checksum() ipv4_checksum;
+    Checksum() udp_checksum;
+
     apply {
+        hdr.ipv4.hdr_checksum = ipv4_checksum.update({
+            hdr.ipv4.version,
+            hdr.ipv4.ihl,
+            hdr.ipv4.diffserv,
+            hdr.ipv4.total_len,
+            hdr.ipv4.identification,
+            hdr.ipv4.flags,
+            hdr.ipv4.frag_offset,
+            hdr.ipv4.ttl,
+            hdr.ipv4.protocol,
+            hdr.ipv4.src_addr,
+            hdr.ipv4.dst_addr
+        });
+
+        hdr.udp.checksum = udp_checksum.update({
+            hdr.udp.src_port,
+            hdr.udp.dst_port,
+            hdr.udp.length
+        });
+
         // TODO: recompute UDP checksum
         pkt.emit(hdr);
     }
