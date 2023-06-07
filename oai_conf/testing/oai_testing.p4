@@ -133,7 +133,7 @@ control MyIngress(
 
     table tbl_forward {
         key = { 
-            hdr.ipv4.dst_addr: exact; 
+            hdr.ipv4.dst_addr: ternary; 
         }
         actions = { 
             forward; 
@@ -145,11 +145,17 @@ control MyIngress(
             // 0xc0a84691 : forward(0x649d99b1260e, 136);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
             // 0xc0a84686 : forward(0x8aca58b8e852, 152);     // UPF - 192.168.70.134 mare[ens1f1np1], 3/0
             // 0xc0a84684 : forward(0x8aca58b9e951, 152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
-            0xc0a84690 : forward(5);     // CU - 192.168.70.144 @ tofino2b[enp4s0f0], 33/3
-            0xc0a84691 : forward(136);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
-            0xc0a84686 : forward(152);     // UPF - 192.168.70.134 mare[ens1f1np1], 3/0
-            0xc0a84684 : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
-            0xc0a84681 : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+
+            // 0xc0a84690 : forward(5);     // CU - 192.168.70.144 @ tofino2b[enp4s0f0], 33/3
+            // 0xc0a84691 : forward(136);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
+            // 0xc0a84686 : forward(152);     // UPF - 192.168.70.134 mare[ens1f1np1], 3/0
+            // 0xc0a84684 : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+            // 0xc0a84681 : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+
+            (0xc0a84690 &&& 0xffffffff)  : forward(5);
+            (0xc0a84691 &&& 0xffffffff) : forward(136);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
+            (0xc0a84684 &&& 0xffffffff) : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+            (0xc0a84580 &&& 0xffffff00) : forward(152);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
         }
         size = 64;
     }
