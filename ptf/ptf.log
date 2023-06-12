@@ -1,27 +1,41 @@
-14:45:37.599  root      : INFO    : ++++++++ Wed Jun  7 14:45:37 2023 ++++++++
-14:45:37.811  root      : INFO    : ROCEv2 support found in Scapy
-14:45:37.812  root      : INFO    : ERSPAN support found in Scapy
-14:45:37.813  root      : INFO    : GENEVE support found in Scapy
-14:45:37.814  root      : INFO    : MPLS support found in Scapy
-14:45:37.814  root      : INFO    : IGMP support found in Scapy
-14:45:37.817  root      : DEBUG   : Parsed test parameters:
-14:45:37.817  root      : DEBUG   : 	*arch=tofino2
-14:45:37.817  root      : DEBUG   : 	*p4_name=cu
-14:45:37.817  root      : DEBUG   : 	*target=asic-model
-14:45:37.817  root      : DEBUG   : 	*use_pi=False
-14:45:37.817  root      : DEBUG   : 	*traffic_gen=None
-14:45:37.817  root      : DEBUG   : 	*config_file=filename
-14:45:37.817  root      : DEBUG   : 	*drivers_test_info=None
-14:45:37.817  root      : DEBUG   : 	*test_seed=None
-14:45:37.817  root      : DEBUG   : 	*num_pipes=4
-14:45:37.817  root      : DEBUG   : 	*pkt_size=100
-14:45:37.817  root      : DEBUG   : 	*port_mode=100g
-14:45:37.817  root      : DEBUG   : 	*counter_byte_adjust=0
-14:45:37.817  root      : DEBUG   : 	*setup=False
-14:45:37.817  root      : DEBUG   : 	*cleanup=False
-14:45:37.817  root      : DEBUG   : 	*p4c=
-14:45:37.817  root      : DEBUG   : 	*thrift_server=localhost
-14:45:37.817  root      : DEBUG   : 	*grpc_server=localhost
-14:45:37.817  root      : DEBUG   : 	*reboot=none
-14:45:37.817  root      : DEBUG   : If something is missing, make sure you used the correct syntax: --test-params="[k=v;]*k=v"
-14:45:38.008  root      : WARNING : Could not import file test.py
+18:20:21.544  root      : INFO    : ++++++++ Thu Jun  8 18:20:21 2023 ++++++++
+18:20:21.808  root      : INFO    : ROCEv2 support found in Scapy
+18:20:21.809  root      : INFO    : ERSPAN support found in Scapy
+18:20:21.810  root      : INFO    : GENEVE support found in Scapy
+18:20:21.811  root      : INFO    : MPLS support found in Scapy
+18:20:21.812  root      : INFO    : IGMP support found in Scapy
+18:20:21.815  root      : DEBUG   : Parsed test parameters:
+18:20:21.815  root      : DEBUG   : 	*arch=tofino2
+18:20:21.815  root      : DEBUG   : 	*p4_name=cu
+18:20:21.815  root      : DEBUG   : 	*target=asic-model
+18:20:21.815  root      : DEBUG   : 	*use_pi=False
+18:20:21.815  root      : DEBUG   : 	*traffic_gen=None
+18:20:21.815  root      : DEBUG   : 	*config_file=filename
+18:20:21.815  root      : DEBUG   : 	*drivers_test_info=None
+18:20:21.815  root      : DEBUG   : 	*test_seed=None
+18:20:21.815  root      : DEBUG   : 	*num_pipes=4
+18:20:21.815  root      : DEBUG   : 	*pkt_size=100
+18:20:21.816  root      : DEBUG   : 	*port_mode=100g
+18:20:21.816  root      : DEBUG   : 	*counter_byte_adjust=0
+18:20:21.816  root      : DEBUG   : 	*setup=False
+18:20:21.816  root      : DEBUG   : 	*cleanup=False
+18:20:21.816  root      : DEBUG   : 	*p4c=
+18:20:21.816  root      : DEBUG   : 	*thrift_server=localhost
+18:20:21.816  root      : DEBUG   : 	*grpc_server=localhost
+18:20:21.816  root      : DEBUG   : 	*reboot=none
+18:20:21.816  root      : DEBUG   : If something is missing, make sure you used the correct syntax: --test-params="[k=v;]*k=v"
+18:20:22.098  root      : INFO    : Importing platform: eth
+18:20:22.099  root      : DEBUG   : Configuration: {'list': False, 'list_test_names': False, 'allow_user': False, 'test_spec': '', 'test_file': None, 'test_dir': '/home/archit/tofino-cu/ptf/', 'test_order': 'default', 'test_order_seed': 2746, 'num_shards': 1, 'shard_id': 0, 'platform': 'eth', 'platform_args': None, 'platform_dir': '/home/archit/bf-sde-9.11.1/install/lib/python3.8/site-packages/ptf/platforms', 'interfaces': [(0, 8, 'veth1'), (0, 9, 'veth3'), (0, 10, 'veth5'), (0, 11, 'veth7'), (0, 12, 'veth9'), (0, 13, 'veth11'), (0, 14, 'veth13'), (0, 15, 'veth15'), (0, 16, 'veth17'), (0, 17, 'veth19'), (0, 18, 'veth21'), (0, 19, 'veth23'), (0, 20, 'veth25'), (0, 21, 'veth27'), (0, 22, 'veth29'), (0, 23, 'veth31'), (0, 24, 'veth33'), (0, 2, 'veth251')], 'port_info': {}, 'device_sockets': [], 'log_file': 'ptf.log', 'log_dir': None, 'debug': 'verbose', 'profile': False, 'profile_file': 'profile.out', 'xunit': False, 'xunit_dir': 'xunit', 'relax': False, 'test_params': "arch='tofino2';p4_name='cu';target='asic-model';use_pi='False';traffic_gen='None';config_file='filename';drivers_test_info='None';test_seed='None';num_pipes='4';pkt_size='100';port_mode='100g';counter_byte_adjust='0';setup=False;cleanup=False;p4c='';thrift_server='localhost';grpc_server='localhost';reboot='none';", 'failfast': False, 'fail_skipped': False, 'default_timeout': 2.0, 'default_negative_timeout': 0.1, 'minsize': 0, 'random_seed': None, 'disable_ipv6': False, 'disable_vxlan': False, 'disable_erspan': False, 'disable_geneve': False, 'disable_mpls': False, 'disable_nvgre': False, 'disable_igmp': False, 'disable_rocev2': False, 'qlen': 100, 'test_case_timeout': None, 'socket_recv_size': 10240, 'packet_manipulation_module': 'ptf.packet_scapy', 'port_map': {(0, 8): 'veth1', (0, 9): 'veth3', (0, 10): 'veth5', (0, 11): 'veth7', (0, 12): 'veth9', (0, 13): 'veth11', (0, 14): 'veth13', (0, 15): 'veth15', (0, 16): 'veth17', (0, 17): 'veth19', (0, 18): 'veth21', (0, 19): 'veth23', (0, 20): 'veth25', (0, 21): 'veth27', (0, 22): 'veth29', (0, 23): 'veth31', (0, 24): 'veth33', (0, 2): 'veth251'}}
+18:20:22.099  root      : INFO    : port map: {(0, 8): 'veth1', (0, 9): 'veth3', (0, 10): 'veth5', (0, 11): 'veth7', (0, 12): 'veth9', (0, 13): 'veth11', (0, 14): 'veth13', (0, 15): 'veth15', (0, 16): 'veth17', (0, 17): 'veth19', (0, 18): 'veth21', (0, 19): 'veth23', (0, 20): 'veth25', (0, 21): 'veth27', (0, 22): 'veth29', (0, 23): 'veth31', (0, 24): 'veth33', (0, 2): 'veth251'}
+18:20:22.099  root      : INFO    : Autogen random seed: 47840832
+18:20:22.102  root      : INFO    : *** TEST RUN START: Thu Jun  8 18:20:22 2023
+18:20:22.102  root      : INFO    : ** START TEST CASE test.CU
+18:20:22.127  bfruntime_grpc_client: INFO    : Subscribe attempt #1
+18:20:22.154  bfruntime_grpc_client: INFO    : Subscribe response received 0
+18:20:22.191  bfruntime_grpc_client: INFO    : Received mirror_test on GetForwarding on client 0, device 0
+18:20:22.205  bfruntime_grpc_client: INFO    : Binding with p4_name mirror_test
+18:20:22.207  bfruntime_grpc_client: INFO    : Binding with p4_name mirror_test successful!!
+18:20:22.251  bfruntime_grpc_client: INFO    : Received mirror_test on GetForwarding on client 0, device 0
+18:20:22.332  root      : INFO    : ** END TEST CASE test.CU
+18:20:22.334  root      : INFO    : *** TEST RUN END  : Thu Jun  8 18:20:22 2023
+18:20:22.334  dataplane : INFO    : Thread exit

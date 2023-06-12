@@ -182,13 +182,13 @@ class CU(P4ProgramTest):
         print("Adding table rules")
         print("========")
         
-        programTable(self.forward, [
-                    ([("hdr.ipv4.dst_addr", '0xc0a84690 &&& 0xffffffff')],
-                    "SwitchIngress.ipv4_forward_action", [("port", egress_port)]),
-                    ([("hdr.ipv4.dst_addr", '0xc0a84580 &&& 0xffffff00')],
-                    "SwitchIngress.ipv4_forward_action", [("port", egress_port)])
-                    ]        
-                     , self.dev_tgt)
+        # programTable(self.forward, [
+        #             ([("hdr.ipv4.dst_addr", '0xc0a84690 &&& 0xffffffff')],
+        #             "SwitchIngress.ipv4_forward_action", [("port", egress_port)]),
+        #             ([("hdr.ipv4.dst_addr", '0xc0a84580 &&& 0xffffff00')],
+        #             "SwitchIngress.ipv4_forward_action", [("port", egress_port)])
+        #             ]        
+        #              , self.dev_tgt)
 
         programTable(self.uplink, [
                     ([("hdr.gtpu.teid", 0x301e8f18)],
