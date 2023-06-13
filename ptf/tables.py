@@ -90,8 +90,9 @@ print("Added Ports")
 forward = bfrt_info.table_get('pipe.Ingress.ipv4_forward')
 
 # Add key fields
-forward.info.key_field_annotation_add('hdr.ipv4.dst-addr','hdr.udp.dst_port')
+forward.info.key_field_annotation_add('hdr.ipv4.dst_addr','hdr.udp.dst_port')
 
 # Create key
-key = forward.make_key([gc.KeyTuple('hdr.ipv4.dst-addr', 192.168.70.134), gc.KeyTuple("hdr.udp.dst_port", 2153)])
+key = [forward.make_key([gc.KeyTuple("hdr.ipv4.dst_addr", "192.168.70.134"),gc.KeyTuple("hdr.udp.dst_port", 2153)])]
+
 
