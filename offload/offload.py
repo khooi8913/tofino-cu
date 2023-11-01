@@ -3,42 +3,6 @@ import ipaddress
 
 from scapy.all import *
 
-sde_install = os.environ['SDE_INSTALL']
-sys.path.append('%s/lib/python2.7/site-packages/tofino'%(sde_install))
-sys.path.append('%s/lib/python2.7/site-packages/p4testutils'%(sde_install))
-sys.path.append('%s/lib/python2.7/site-packages'%(sde_install))
-
-# Assumes valid PYTHONPATH
-import grpc
-import bfrt_grpc.bfruntime_pb2 as bfrt_grpc
-import bfrt_grpc.client as gc
-
-# Connect to the BF Runtime server
-for bfrt_client_id in range(10):
-    try:
-        interface = gc.ClientInterface(
-            grpc_addr="localhost:50052",
-            client_id=bfrt_client_id,
-            device_id=0,
-            num_tries=1,
-        )
-        print("Connected to BF Runtime Server as client", bfrt_client_id)
-        break
-    except:
-        print("Could not connect to BF Runtime Server")
-        quit
-
-# Get information about the running program
-bfrt_info = interface.bfrt_info_get()
-print("The target is running the P4 program: {}".format(bfrt_info.p4_name_get()))
-
-# Establish that you are the "main" client
-if bfrt_client_id == 0:
-    interface.bind_pipeline_config(bfrt_info.p4_name_get())
-
-# Get the target device, currently setup for all pipes
-target = gc.Target(device_id=0, pipe_id=0xffff)
-
 # ==============================
 # CONSTANTS
 # ==============================
@@ -56,8 +20,44 @@ UDP_PORT_N3 = 2152
 mode = sys.argv[1]
 net_intf = sys.argv[2]
 
-if mode == "offline" or mode == "online":
+if mode == "offline":
     pass
+elif mode == "online":
+    sde_install = os.environ['SDE_INSTALL']
+    sys.path.append('%s/lib/python2.7/site-packages/tofino'%(sde_install))
+    sys.path.append('%s/lib/python2.7/site-packages/p4testutils'%(sde_install))
+    sys.path.append('%s/lib/python2.7/site-packages'%(sde_install))
+
+    # Assumes valid PYTHONPATH
+    import grpc
+    import bfrt_grpc.bfruntime_pb2 as bfrt_grpc
+    import bfrt_grpc.client as gc
+
+    # Connect to the BF Runtime server
+    for bfrt_client_id in range(10):
+        try:
+            interface = gc.ClientInterface(
+                grpc_addr="localhost:50052",
+                client_id=bfrt_client_id,
+                device_id=0,
+                num_tries=1,
+            )
+            print("Connected to BF Runtime Server as client", bfrt_client_id)
+            break
+        except:
+            print("Could not connect to BF Runtime Server")
+            quit
+
+    # Get information about the running program
+    bfrt_info = interface.bfrt_info_get()
+    print("The target is running the P4 program: {}".format(bfrt_info.p4_name_get()))
+
+    # Establish that you are the "main" client
+    if bfrt_client_id == 0:
+        interface.bind_pipeline_config(bfrt_info.p4_name_get())
+
+    # Get the target device, currently setup for all pipes
+    target = gc.Target(device_id=0, pipe_id=0xffff)
 else:
     print("invalid arguments!")
     exit(1)
@@ -92,20 +92,23 @@ def to_hex_string(byte_array):
 
 def parse_gtp(gtp_headers):
     teid = gtp_headers[4:8]
-    seq_num = gtp_headers[8:10]
-    npdu = gtp_headers[10:11]
+    # seq_num = gtp_headers[8:10]
+    # npdu = gtp_headers[10:11]
+    seq_num = gtp_headers[8:11]
     ext_hdr = gtp_headers[11:12] if len(gtp_headers) > 11 else None
     qfi = gtp_headers[14:15] if len(gtp_headers) > 11 else None
     
     print("TEID", to_hex_string(teid))
     print("Sequence Number", to_hex_string(seq_num))
-    print("N-PDU Number", to_hex_string(npdu))
+    # print("N-PDU Number", to_hex_string(npdu))
     if len(gtp_headers) > 11:
         print("Extension Header", to_hex_string(ext_hdr))
         print("QFI", to_hex_string(qfi))
-        return int.from_bytes(teid, 'big'), int.from_bytes(seq_num, 'big'), int.from_bytes(npdu, 'big'), int.from_bytes(ext_hdr, 'big'), int.from_bytes(qfi, 'big')
+        # return int.from_bytes(teid, 'big'), int.from_bytes(seq_num, 'big'), int.from_bytes(npdu, 'big'), int.from_bytes(ext_hdr, 'big'), int.from_bytes(qfi, 'big')
+        return int.from_bytes(teid, 'big'), int.from_bytes(seq_num, 'big'), int.from_bytes(ext_hdr, 'big'), int.from_bytes(qfi, 'big')
     else:
-        return int.from_bytes(teid, 'big'), int.from_bytes(seq_num, 'big'), int.from_bytes(npdu, 'big')
+        # return int.from_bytes(teid, 'big'), int.from_bytes(seq_num, 'big'), int.from_bytes(npdu, 'big')
+        return int.from_bytes(teid, 'big'), int.from_bytes(seq_num, 'big')
 
 
 def is_UE_subnet(ip_addr):
@@ -181,49 +184,57 @@ def push_to_data_plane(ul_key, dl_key):
     index = (ul_key, dl_key)
     if not index in is_pushed:
         # uplink direction
-        f1_ul_teid, f1_ul_seq_num, f1_ul_npdu = du_to_cu[ul_key]
-        n3_ul_teid, n3_ul_seq_num, n3_ul_npdu, n3_ul_ext_hdr, n3_ul_qfi = cu_to_cn[ul_key]
-        print(f1_ul_teid, f1_ul_seq_num, f1_ul_npdu)
-        print(n3_ul_teid, n3_ul_seq_num, n3_ul_npdu, n3_ul_ext_hdr, n3_ul_qfi)
+        # f1_ul_teid, f1_ul_seq_num, f1_ul_npdu = du_to_cu[ul_key]
+        # n3_ul_teid, n3_ul_seq_num, n3_ul_npdu, n3_ul_ext_hdr, n3_ul_qfi = cu_to_cn[ul_key]
+        # print(f1_ul_teid, f1_ul_seq_num, f1_ul_npdu)
+        # print(n3_ul_teid, n3_ul_seq_num, n3_ul_npdu, n3_ul_ext_hdr, n3_ul_qfi)
+        f1_ul_teid, f1_ul_seq_num = du_to_cu[ul_key]
+        n3_ul_teid, n3_ul_seq_num, n3_ul_ext_hdr, n3_ul_qfi = cu_to_cn[ul_key]
+        print(f1_ul_teid, f1_ul_seq_num)
+        print(n3_ul_teid, n3_ul_seq_num, n3_ul_ext_hdr, n3_ul_qfi)
 
         print("UPLINK TEID (F1 to N3) MAPPING", f1_ul_teid, "TO", n3_ul_teid, "with QFI", n3_ul_qfi)
 
         # Calling the bfrt tables
-        fast_f1_to_n3 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_f1_to_n3')
-        fast_f1_to_n3_key = [fast_f1_to_n3.make_key([gc.KeyTuple("hdr.gtpu.teid", f1_ul_teid)])]
-        fast_f1_to_n3_data = [fast_f1_to_n3.make_data([gc.DataTuple("teid", n3_ul_teid), 
-                                                       gc.DataTuple("qfi", n3_ul_qfi)],'SwitchIngress.rewrite_f1_to_n3')]
-        
-        fast_f1_to_n3.entry_add(target, fast_f1_to_n3_key, fast_f1_to_n3_data)
+        if mode == "online":
+            fast_f1_to_n3 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_f1_to_n3')
+            fast_f1_to_n3_key = [fast_f1_to_n3.make_key([gc.KeyTuple("hdr.gtpu.teid", f1_ul_teid)])]
+            fast_f1_to_n3_data = [fast_f1_to_n3.make_data([gc.DataTuple("teid", n3_ul_teid), 
+                                                        gc.DataTuple("qfi", n3_ul_qfi)],'SwitchIngress.rewrite_f1_to_n3')]
+            
+            fast_f1_to_n3.entry_add(target, fast_f1_to_n3_key, fast_f1_to_n3_data)
  
         # p4.Ingress.ipv4_forward.entry_with_send(dst_addr=ipaddress.ip_address("192.168.70.132"), port=152).push()
         
         
         # -----Downlink direction    
-        n3_dl_teid, n3_dl_seq_num, n3_dl_npdu, n3_dl_ext_hdr, n3_dl_qfi = cn_to_cu[dl_key]
-        f1_dl_teid, f1_dl_seq_num, f1_dl_npdu = cu_to_du[dl_key]
-        print(n3_dl_teid, n3_dl_seq_num, n3_dl_npdu, n3_dl_ext_hdr, n3_dl_qfi)
-        print(f1_dl_teid, f1_dl_seq_num, f1_dl_npdu)
+        # n3_dl_teid, n3_dl_seq_num, n3_dl_npdu, n3_dl_ext_hdr, n3_dl_qfi = cn_to_cu[dl_key]
+        # f1_dl_teid, f1_dl_seq_num, f1_dl_npdu = cu_to_du[dl_key]
+        # print(n3_dl_teid, n3_dl_seq_num, n3_dl_npdu, n3_dl_ext_hdr, n3_dl_qfi)
+        # print(f1_dl_teid, f1_dl_seq_num, f1_dl_npdu)
+        n3_dl_teid, n3_dl_seq_num, n3_dl_ext_hdr, n3_dl_qfi = cn_to_cu[dl_key]
+        f1_dl_teid, f1_dl_seq_num = cu_to_du[dl_key]
+        print(n3_dl_teid, n3_dl_seq_num, n3_dl_ext_hdr, n3_dl_qfi)
+        print(f1_dl_teid, f1_dl_seq_num)
 
-        print("DOWNLINK TEID (N3 to F1) MAPPING", n3_dl_teid, "TO", f1_dl_teid, "with SeqNumber", f1_dl_seq_num, "and NPDU", f1_dl_npdu)
+        # print("DOWNLINK TEID (N3 to F1) MAPPING", n3_dl_teid, "TO", f1_dl_teid, "with SeqNumber", f1_dl_seq_num, "and NPDU", f1_dl_npdu)
+        print("DOWNLINK TEID (N3 to F1) MAPPING", n3_dl_teid, "TO", f1_dl_teid, "with SeqNumber", f1_dl_seq_num)
 
+        if mode == "online":
+            fast_n3_to_f1 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_n3_to_f1')
+            fast_n3_to_f1_key = [fast_n3_to_f1.make_key([gc.KeyTuple("hdr.gtpu.teid", n3_dl_teid)])]
+            fast_n3_to_f1_data = [fast_n3_to_f1.make_data([gc.DataTuple("teid", f1_dl_teid), 
+                                                        gc.DataTuple("seq_num", f1_dl_seq_num),
+                                                        gc.DataTuple("index", assigned_user_idx)], 'SwitchIngress.rewrite_n3_to_f1')]
+            
+            fast_n3_to_f1.entry_add(target, fast_n3_to_f1_key, fast_n3_to_f1_data)
 
-        fast_n3_to_f1 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_n3_to_f1')
-        fast_n3_to_f1_key = [fast_n3_to_f1.make_key([gc.KeyTuple("hdr.gtpu.teid", n3_dl_teid)])]
-        fast_n3_to_f1_data = [fast_n3_to_f1.make_data([gc.DataTuple("teid", f1_dl_teid), 
-                                                       gc.DataTuple("seq_num", f1_dl_seq_num),
-                                                       gc.DataTuple("index", assigned_user_idx)], 'SwitchIngress.rewrite_n3_to_f1')]
-        
-        fast_n3_to_f1.entry_add(target, fast_n3_to_f1_key, fast_n3_to_f1_data)
-
-           
-        # Initialize the register
-        npdu_reg = bfrt_info.table_get("pipe.SwitchIngress.npdu_reg")
-        npdu_keys = [npdu_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', assigned_user_idx)])]
-        npdu_data = [npdu_reg.make_data([gc.DataTuple('SwitchIngress.npdu_reg.f1', f1_dl_npdu)])]
-        npdu_reg.entry_mod(target, npdu_keys, npdu_data)
-
-        assigned_user_idx += 1
+            # Initialize the register
+            seq_num_reg = bfrt_info.table_get("pipe.SwitchIngress.seq_num_reg")
+            seq_num_keys = [seq_num_reg.make_key([gc.KeyTuple('$REGISTER_INDEX', assigned_user_idx)])]
+            seq_num_data = [seq_num_reg.make_data([gc.DataTuple('SwitchIngress.seq_num_reg.f1', f1_dl_seq_num)])]
+            seq_num_reg.entry_mod(target, seq_num_keys, seq_num_data)
+            assigned_user_idx += 1
 
         print("offloaded!")
         is_pushed[index] = True
