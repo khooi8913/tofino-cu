@@ -6,9 +6,9 @@ from scapy.all import *
 # ==============================
 # CONSTANTS
 # ==============================
-IP_ADDR_CU = "192.168.70.144"
-IP_ADDR_DU = "192.168.70.145"
-IP_ADDR_UPF = "192.168.69.134"
+IP_ADDR_CU = "192.168.1.3"
+IP_ADDR_DU = "192.168.1.6"
+IP_ADDR_UPF = "192.168.70.134"
 
 UDP_PORT_F1 = 2153
 UDP_PORT_N3 = 2152
@@ -224,7 +224,7 @@ def push_to_data_plane(ul_key, dl_key):
             fast_n3_to_f1 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_n3_to_f1')
             fast_n3_to_f1_key = [fast_n3_to_f1.make_key([gc.KeyTuple("hdr.gtpu.teid", n3_dl_teid)])]
             fast_n3_to_f1_data = [fast_n3_to_f1.make_data([gc.DataTuple("teid", f1_dl_teid), 
-                                                        gc.DataTuple("seq_num", f1_dl_seq_num),
+                                                        # gc.DataTuple("seq_num", f1_dl_seq_num),
                                                         gc.DataTuple("index", assigned_user_idx)], 'SwitchIngress.rewrite_n3_to_f1')]
             
             fast_n3_to_f1.entry_add(target, fast_n3_to_f1_key, fast_n3_to_f1_data)

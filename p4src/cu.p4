@@ -20,10 +20,16 @@ const ip_protocol_t IP_PROTOCOLS_UDP = 0x11;
 
 const bit<16> UDP_PORT_N3 = 0x0868; // from core-- 2152
 const bit<16> UDP_PORT_F1 = 0x0869; // towards core-- 2153
+// const bit<16> UDP_PORT_N3 = 0x0868; // from core-- 2152
+// const bit<16> UDP_PORT_F1 = 0x0868; // towards core-- 2152
 
-const bit<32> IP_ADDR_CU = 0xc0a84690;      // 192.168.70.144
-const bit<32> IP_ADDR_DU = 0xc0a84691;      // 192.168.70.145
-const bit<32> IP_ADDR_UPF = 0xc0a84586;     // 192.168.69.134
+// const bit<32> IP_ADDR_CU = 0xc0a84690;      // 192.168.70.144
+// const bit<32> IP_ADDR_DU = 0xc0a84691;      // 192.168.70.145
+// const bit<32> IP_ADDR_UPF = 0xc0a84586;     // 192.168.69.134
+const bit<32> IP_ADDR_CU = 0xc0a80103;      // 192.168.1.3
+const bit<32> IP_ADDR_DU = 0xc0a80106;      // 192.168.1.6
+const bit<32> IP_ADDR_UPF = 0xc0a84686;     // 192.168.69.134
+const bit<32> IP_ADDR_EXT = 0xc0a80105;     // 192.168.1.5
 
 #if __TARGET_TOFINO__ == 2
 const bit<9> CPU_PORT = 0x05;
@@ -76,13 +82,25 @@ header udp_h {
 }
 
 // GTPU v1
+// header gtpu_h {
+//     bit<1>  npdu_flag;  /* n-pdn number present ? */
+//     bit<1>  seq_flag;   /* sequence no. */
+//     bit<1>  spare;      /* reserved */
+//     bit<1>  ex_flag;    /* next extension hdr present? */
+//     bit<1>  pt;         /* protocol type */
+//     bit<3>  version;    /* version */
+//     bit<8>  msgtype;    /* message type */
+//     bit<16> msglen;     /* message length */
+//     bit<32>  teid;       /* tunnel endpoint id */
+// }
+// GTPU v1
 header gtpu_h {
-    bit<1>  npdu_flag;  /* n-pdn number present ? */
-    bit<1>  seq_flag;   /* sequence no. */
+    bit<3>  version;    /* version */
+    bit<1>  pt;         /* protocol type */
     bit<1>  spare;      /* reserved */
     bit<1>  ex_flag;    /* next extension hdr present? */
-    bit<1>  pt;         /* protocol type */
-    bit<3>  version;    /* version */
+    bit<1>  seq_flag;   /* sequence no. */
+    bit<1>  npdu_flag;  /* n-pdn number present ? */
     bit<8>  msgtype;    /* message type */
     bit<16> msglen;     /* message length */
     bit<32>  teid;       /* tunnel endpoint id */
@@ -173,6 +191,7 @@ parser SwitchIngressParser(packet_in        pkt,
         transition select(hdr.udp.dst_port) {
             UDP_PORT_N3 : parse_gtp;     // towards core
             UDP_PORT_F1 : parse_gtp;
+            default : accept;
         }
     }
 
@@ -238,11 +257,17 @@ control SwitchIngress(
         }
         default_action = NoAction();
         const entries = {
-            (0xc0a84690 &&& 0xffffffff) : ipv4_forward_action(CPU_PORT, 0x0090fb770bac);       // CU(N3) - 192.168.70.144 @ tofino2b[enp4s0f0], 33/3
-            (0xc0a84692 &&& 0xffffffff) : ipv4_forward_action(CPU_PORT, 0x0090fb770bac);       // CU(F1) - 192.168.70.146 @ tofino2b[enp4s0f0], 33/3
-            (0xc0a84691 &&& 0xffffffff) : ipv4_forward_action(136, 0x649d99b1260e);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
-            (0xc0a84684 &&& 0xffffffff) : ipv4_forward_action(152, 0x08c0ebd418a3);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
-            (0xc0a84580 &&& 0xffffff00) : ipv4_forward_action(152, 0x08c0ebd418a3);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+            // (0xc0a84690 &&& 0xffffffff) : ipv4_forward_action(CPU_PORT, 0x0090fb770bac);       // CU(N3) - 192.168.70.144 @ tofino2b[enp4s0f0], 33/3
+            // (0xc0a84692 &&& 0xffffffff) : ipv4_forward_action(CPU_PORT, 0x0090fb770bac);       // CU(F1) - 192.168.70.146 @ tofino2b[enp4s0f0], 33/3
+            // (0xc0a84691 &&& 0xffffffff) : ipv4_forward_action(136, 0x649d99b1260e);     // DU - 192.168.70.145 @ aeon[enp179s0f0], 1/0
+            // (0xc0a84684 &&& 0xffffffff) : ipv4_forward_action(152, 0x08c0ebd418a3);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+            // (0xc0a84580 &&& 0xffffff00) : ipv4_forward_action(152, 0x08c0ebd418a3);     // AMF - 192.168.70.132 mare[ens1f1np1], 3/0
+            (IP_ADDR_CU &&& 0xffffffff) : ipv4_forward_action(CPU_PORT, 0x0090fb770bac);        // CU - tofino2b[enp4s0f0], 33/3
+            (IP_ADDR_DU &&& 0xffffffff) : ipv4_forward_action(176, 0x649d99b1b92d);             // DU - cir-zeus[enp179s0f0], 6/0
+            (0xc0a84684 &&& 0xffffffff) : ipv4_forward_action(168, 0x08c0ebd418a2);             // AMF - 192.168.70.132 mare[ens1f0np0], 5/0
+            (0xc0a84686 &&& 0xffffffff) : ipv4_forward_action(168, 0x08c0ebd418a2);             // UPF - 192.168.70.134 mare[ens1f0np0], 5/0
+            (0xc0a80102 &&& 0xffffffff) : ipv4_forward_action(168, 0x08c0ebd418a2);             // 192.168.1.2 mare[ens1f0np0], 5/0
+            (0xc0a80105 &&& 0xffffffff) : ipv4_forward_action(152, 0xe8ebd3aa7f92);             // 192.168.1.5 poseidon[ens1f0np0], 3/0
         }
         size = 64;
     }
