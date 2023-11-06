@@ -6,3 +6,8 @@ Steps to run the Tofino-2b--
 3> Run bfshell and add the rules in arp_setup to the bfrt cli
 4> To enable timestamping for the off-loaded case run cdf/cdf.py
 5> To offload to the switch run offload.py at the end  
+
+## offload.py 
+```
+sudo -E SDE_INSTALL=$SDE_INSTALL PYTHONPATH=$PYTHONPATH  python3 offload.py online enp4s0f0 0
+```````
