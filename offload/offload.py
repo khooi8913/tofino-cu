@@ -17,8 +17,10 @@ UDP_PORT_N3 = 2152
 # Usage (without debug): 
 # 1. offline: python3 offload.py offline sample.pcap 0
 # 2. online: sudo python3 offload.py online ens1 0
+# sudo -E SDE_INSTALL=$SDE_INSTALL PYTHONPATH=$PYTHONPATH  python3 offload.py online enp4s0f0 0
 mode = sys.argv[1]
 net_intf = sys.argv[2]
+enable_uplink = sys.argv[3] # to enable, set to 1
 
 if mode == "offline":
     pass
@@ -196,13 +198,15 @@ def push_to_data_plane(ul_key, dl_key):
         print("UPLINK TEID (F1 to N3) MAPPING", f1_ul_teid, "TO", n3_ul_teid, "with QFI", n3_ul_qfi)
 
         # Calling the bfrt tables
-        if mode == "online":
+        if mode == "online" and enable_uplink == "1":
             fast_f1_to_n3 = bfrt_info.table_get('pipe.SwitchIngress.fastpath_f1_to_n3')
             fast_f1_to_n3_key = [fast_f1_to_n3.make_key([gc.KeyTuple("hdr.gtpu.teid", f1_ul_teid)])]
             fast_f1_to_n3_data = [fast_f1_to_n3.make_data([gc.DataTuple("teid", n3_ul_teid), 
                                                         gc.DataTuple("qfi", n3_ul_qfi)],'SwitchIngress.rewrite_f1_to_n3')]
             
             fast_f1_to_n3.entry_add(target, fast_f1_to_n3_key, fast_f1_to_n3_data)
+        else:
+            print("Uplink offloading disabled, skipping ...")
  
         # p4.Ingress.ipv4_forward.entry_with_send(dst_addr=ipaddress.ip_address("192.168.70.132"), port=152).push()
         
