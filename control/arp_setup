@@ -1,0 +1,5 @@
+bfrt.pre.node.add(MULTICAST_NODE_ID=0, MULTICAST_RID=0, MULTICAST_LAG_ID=[], DEV_PORT=[5, 136, 152, 168, 176])
+bfrt.pre.mgid.add(MGID=1, MULTICAST_NODE_ID=[0], MULTICAST_NODE_L1_XID_VALID=[False], MULTICAST_NODE_L1_XID=[0])
+
+# Mirror setup
+bfrt.mirror.cfg.entry_with_normal(sid = 2, direction = 'INGRESS', session_enable = True, ucast_egress_port = 168, ucast_egress_port_valid = 1, max_pkt_len = 16384).push()

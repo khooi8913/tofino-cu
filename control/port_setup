@@ -1,0 +1,15 @@
+ucli
+pm
+port-add 1/0 10G NONE
+port-add 2/0 100G NONE
+port-add 3/0 100G NONE
+port-add 4/0 100G NONE
+port-add 5/0 100G NONE
+port-add 6/0 40G NONE
+an-set -/- 2
+port-enb -/-
+port-add 33/3 10G NONE
+an-set 33/3 1
+port-enb 33/3
+exit
+exit
