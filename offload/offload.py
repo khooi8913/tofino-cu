@@ -9,6 +9,9 @@ from scapy.all import *
 IP_ADDR_CU = "192.168.1.3"
 IP_ADDR_DU = "192.168.1.6"
 IP_ADDR_UPF = "192.168.70.134"
+# IP_ADDR_CU = "192.168.70.144"
+# IP_ADDR_DU = "192.168.70.145"
+# IP_ADDR_UPF = "192.168.70.134"
 
 UDP_PORT_F1 = 2153
 UDP_PORT_N3 = 2152
@@ -206,7 +209,7 @@ def push_to_data_plane(ul_key, dl_key):
             
             fast_f1_to_n3.entry_add(target, fast_f1_to_n3_key, fast_f1_to_n3_data)
         else:
-            print("Uplink offloading disabled, skipping ...")
+            print("!!! Uplink offloading disabled, skipping ...")
  
         # p4.Ingress.ipv4_forward.entry_with_send(dst_addr=ipaddress.ip_address("192.168.70.132"), port=152).push()
         
@@ -242,7 +245,8 @@ def push_to_data_plane(ul_key, dl_key):
 
         print("offloaded!")
         is_pushed[index] = True
-    print("already offloaded!")
+    else:
+        print("already offloaded!")
     
 
 def offload_gtp_flow():
@@ -273,6 +277,7 @@ def offload_gtp_flow():
             push_to_data_plane(ul_key, dl_key)
 
 def cu_offload_callback(pkt):
+    print(pkt)
     if is_gtp(pkt):
         if is_du_to_cu(pkt):
             print("========== FI-U UL ========== ")
@@ -292,6 +297,6 @@ def cu_offload_callback(pkt):
 
 
 if mode == "online":
-    sniff(iface=net_intf, prn=cu_offload_callback, filter="udp", store=0)
+    sniff(iface=net_intf, prn=cu_offload_callback, filter="udp port 2152 or udp port 2153", store=0)
 elif mode == "offline":
-    sniff(offline=net_intf, prn=cu_offload_callback, filter="udp", store=0)
+    sniff(offline=net_intf, prn=cu_offload_callback, filter="udp port 2152 or udp port 2153", store=0)
