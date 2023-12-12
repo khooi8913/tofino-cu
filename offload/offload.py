@@ -278,6 +278,8 @@ def offload_gtp_flow():
 
 def cu_offload_callback(pkt):
     print(pkt)
+    assert 'UDP' in pkt
+    
     if is_gtp(pkt):
         if is_du_to_cu(pkt):
             print("========== FI-U UL ========== ")
