@@ -135,17 +135,18 @@ control egress(inout headers hdr,
                inout psa_egress_output_metadata_t ostd)
                
 {
-    Register<bit<32>, bit<32>>(65536) seq_num_reg;
+    Register<bit<32>, bit<32>>(65536, 0) seq_num_reg;
 
     action rewrite_pdcp_seq_num (bit<32> index) {
-        bit<18> currSeqNum = (bit<18>) seq_num_reg.read(index);
-        hdr.pdcp.seqNum = currSeqNum;
-        bit<18> nextSeqNum = currSeqNum + 1;
-        seq_num_reg.write((bit<32>)nextSeqNum, index);
+        bit<32> currSeqNum = seq_num_reg.read(index);
+        hdr.pdcp.seqNum = (bit<18>) currSeqNum;
+        bit<32> nextSeqNum = currSeqNum + 1;
+        seq_num_reg.write(index, nextSeqNum);
     }
 
     table f1_pdcp_seq_num_rewrite {
         key = {
+            hdr.ipv4.dstAddr : exact;
             hdr.gtpu.teid : exact;
         }
         actions = {
