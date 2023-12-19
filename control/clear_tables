@@ -1,0 +1,2 @@
+bfrt.cu.pipe.SwitchIngress.fastpath_n3_to_f1.clear()
+bfrt.cu.pipe.SwitchIngress.fastpath_f1_to_n3.clear()
